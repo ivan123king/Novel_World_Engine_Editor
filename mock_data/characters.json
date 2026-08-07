@@ -1,0 +1,29 @@
+[
+  {
+    "id": "char_001",
+    "name": "人物1",
+    "age": 18,
+    "traits": ["谨慎", "重情"],
+    "appearance": "身形清瘦，常穿青色衣衫。",
+    "customFields": {},
+    "schemaVersion": 1
+  },
+  {
+    "id": "char_002",
+    "name": "人物2",
+    "age": "二十余岁",
+    "traits": ["果断", "沉稳"],
+    "appearance": "眉目冷峻，行动利落。",
+    "customFields": {},
+    "schemaVersion": 1
+  },
+  {
+    "id": "char_003",
+    "name": "人物3",
+    "age": null,
+    "traits": ["神秘"],
+    "appearance": "行踪不定，身份暂未公开。",
+    "customFields": {},
+    "schemaVersion": 1
+  }
+]

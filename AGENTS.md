@@ -1,4 +1,4 @@
-﻿# AI 代理入口
+# AI 代理入口
 
 本仓库用于开发 **Novel World Engine Editor**：一个本地桌面工具，用来维护长篇小说的世界状态，并导出可靠的 AI 写作上下文。
 
@@ -35,3 +35,5 @@
 2. 阅读 `docs/ai-guides` 中对应的指南。如果是项目开发，可以阅读PROJECT.md文档，并更新PROJECT.md。
 3. 除非已有明确迁移文档，否则保持现有 JSON 项目格式。
 4. 优先按阶段、小步推进，不要一次性生成整个应用。
+5. 开发前先阅读 `docs/dev-guides/00-dev-guide-index.md`，再按任务需要只阅读对应的 dev-guide。
+
