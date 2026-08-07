@@ -1,4 +1,4 @@
-﻿---
+---
 name: novel-world-engine-editor
 description: 构建、扩展或审查 Novel World Engine Editor：一个本地 Electron + Vue3 + TypeScript 桌面工具，用于管理长篇小说世界状态。Codex 在本工作区处理产品架构、JSON 项目存储、人物/物品/地点/事件/时间线模块、人物关系图、AI 写作上下文导出、章节分析导入或任何实现任务时，都应使用此 skill。
 ---
@@ -39,7 +39,7 @@ description: 构建、扩展或审查 Novel World Engine Editor：一个本地 E
 - 先完成项目打开/创建、JSON 读写和 schema 校验，再做高级 UI。
 - 清晰区分 renderer 状态和已持久化 JSON 数据。
 - 分开建模当前状态和历史事件。当前状态回答“现在什么是真的”；事件解释“为什么变成这样”。
-- 人物、物品、地点等实体只能固定系统必需字段；作者设定字段必须开放，支持 `customFields` 或等价的动态属性模型。
+- 人物固定字段只保留 `name`、`age`、`traits`、`appearance`；其他设定字段必须开放，统一放入 `customFields` 或等价动态属性模型。
 - 人物关系图数据必须在脱离图库后仍然可用。
 - 上下文导出应具备确定性、可配置性，并输出可复制的 Markdown。
 - 增加 AI 章节分析时，必须返回结构化建议变更，并在保存前展示确认差异。
@@ -48,7 +48,7 @@ description: 构建、扩展或审查 Novel World Engine Editor：一个本地 E
 
 - 构建信息密度高的桌面编辑器，不要做营销网站。
 - 使用左侧导航/项目树，中间列表/画布/时间线，右侧 Inspector 面板。
-- 人物编辑应接近 Unity Inspector：基础字段、动态自定义属性、状态、关系、历史。不要把人物表单写死成固定字段。
+- 人物编辑应接近 Unity Inspector：固定基础字段 + 动态自定义属性。不要把人物表单扩展成一堆写死字段。
 - 人物关系图可以使用 Vue Flow、Cytoscape.js 或 AntV G6；底层 JSON 不能依赖具体图库。
 - 优先使用实用控件，不要堆装饰性卡片。
 
