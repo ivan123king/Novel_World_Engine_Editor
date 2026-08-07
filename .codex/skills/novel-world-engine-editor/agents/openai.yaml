@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "Novel World Engine Editor"
+  short_description: "构建和维护本地小说世界引擎编辑器。"
+  default_prompt: "使用 $novel-world-engine-editor 来设计或实现 Novel World Engine Editor。"
