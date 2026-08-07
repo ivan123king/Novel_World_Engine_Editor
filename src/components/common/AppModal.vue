@@ -1,133 +1,71 @@
 <script setup lang="ts">
 /**
  * 公共弹框组件。
- * 用于详情、新建、编辑等需要覆盖当前页面的轻量交互场景。
+ * 基于 Naive UI 的 NModal 封装，用于详情、新建、编辑等需要覆盖当前页面的交互场景。
+ * 提供统一的标题栏、内容区和底部插槽，并内置 Esc 关闭、点击遮罩关闭等标准行为。
  */
-import { onBeforeUnmount, onMounted } from 'vue';
+import { computed } from 'vue';
 
 const props = withDefaults(
   defineProps<{
+    /** 控制弹框显示/隐藏。 */
     open: boolean;
+    /** 弹框标题文本。 */
     title: string;
-    width?: string;
+    /** 弹框宽度，支持像素值或百分比。 */
+    width?: string | number;
+    /** 是否显示关闭按钮。 */
+    closable?: boolean;
+    /** 是否在点击遮罩时关闭弹框。 */
+    maskClosable?: boolean;
   }>(),
   {
-    width: '560px',
+    width: 560,
+    closable: true,
+    maskClosable: true,
   },
 );
 
 const emit = defineEmits<{
+  /** 弹框关闭事件。 */
   close: [];
+  /** 弹框显示状态变化事件。 */
+  'update:open': [value: boolean];
 }>();
 
-/** 关闭当前弹框。 */
-function closeModal(): void {
+/**
+ * 计算弹框预设样式，将宽度配置转换为 Naive UI 需要的格式。
+ */
+const presetStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}));
+
+/**
+ * 关闭当前弹框，同步触发 close 事件和 update:open 事件。
+ */
+function handleClose(): void {
   emit('close');
+  emit('update:open', false);
 }
-
-/** 按 Escape 时关闭弹框，保持桌面工具常见交互。 */
-function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && props.open) {
-    closeModal();
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeydown);
-});
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="modal-backdrop" @click.self="closeModal">
-      <section class="app-modal" :style="{ width }" role="dialog" aria-modal="true">
-        <header class="modal-header">
-          <h2>{{ title }}</h2>
-          <button class="modal-close" type="button" aria-label="关闭弹框" @click="closeModal">×</button>
-        </header>
-        <div class="modal-content">
-          <slot />
-        </div>
-        <footer v-if="$slots.footer" class="modal-footer">
-          <slot name="footer" />
-        </footer>
-      </section>
-    </div>
-  </Teleport>
+  <n-modal
+    :show="open"
+    :mask-closable="maskClosable"
+    :preset="null"
+    @update:show="(val: boolean) => { if (!val) handleClose(); }"
+  >
+    <n-card :title="title" :closable="closable" :style="presetStyle" @close="handleClose">
+      <!-- 内容插槽：放置主要表单或详情内容。 -->
+      <div style="max-height: calc(80vh - 140px); overflow: auto">
+        <slot />
+      </div>
+
+      <!-- 底部插槽：放置操作按钮（如取消、保存等）。 -->
+      <template #footer v-if="$slots.footer">
+        <slot name="footer" />
+      </template>
+    </n-card>
+  </n-modal>
 </template>
-
-<style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  background: rgba(23, 33, 43, 0.28);
-  padding: 24px;
-}
-
-.app-modal {
-  max-width: min(92vw, 720px);
-  max-height: min(86vh, 760px);
-  overflow: hidden;
-  border: 1px solid #b7c3cf;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 18px 48px rgba(23, 33, 43, 0.18);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid #d8e0e8;
-  padding: 14px 16px;
-}
-
-.modal-header h2 {
-  overflow: hidden;
-  color: #17212b;
-  font-size: 17px;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.modal-close {
-  width: 30px;
-  height: 30px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: #526170;
-  cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-}
-
-.modal-close:hover {
-  border-color: #c7d1dc;
-  background: #f2f5f8;
-  color: #17212b;
-}
-
-.modal-content {
-  max-height: calc(86vh - 130px);
-  overflow: auto;
-  padding: 16px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  border-top: 1px solid #d8e0e8;
-  padding: 12px 16px;
-}
-</style>
