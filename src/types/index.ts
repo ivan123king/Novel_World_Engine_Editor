@@ -6,3 +6,10 @@ export {
   type CharacterCustomFields,
   type CharacterFile,
 } from './character';
+export {
+  ITEM_SCHEMA_VERSION,
+  createEmptyItem,
+  isItemFile,
+  type ItemCustomFields,
+  type ItemFile,
+} from './item';

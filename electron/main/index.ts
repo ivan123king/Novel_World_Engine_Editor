@@ -5,6 +5,11 @@ import {
   listCharacters,
   saveCharacter,
 } from './characters/character-service';
+import {
+  deleteItemFile,
+  listItems,
+  saveItem,
+} from './items/item-service';
 
 /** Electron 主进程入口，负责窗口创建和安全 IPC 注册。 */
 
@@ -57,6 +62,16 @@ ipcMain.handle('characters:save', (_event, character, baseDirPath?: string) =>
 
 ipcMain.handle('characters:delete', (_event, characterId: string, baseDirPath?: string) =>
   deleteCharacterFile(characterId, baseDirPath),
+);
+
+ipcMain.handle('items:list', (_event, baseDirPath?: string) => listItems(baseDirPath));
+
+ipcMain.handle('items:save', (_event, item, baseDirPath?: string) =>
+  saveItem(item, baseDirPath),
+);
+
+ipcMain.handle('items:delete', (_event, itemId: string, baseDirPath?: string) =>
+  deleteItemFile(itemId, baseDirPath),
 );
 
 app.whenReady().then(() => {

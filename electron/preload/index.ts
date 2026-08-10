@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CharacterFile } from '../../src/types';
+import type { CharacterFile, ItemFile } from '../../src/types';
 
 /**
  * Electron preload 安全桥接。
@@ -12,4 +12,9 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('characters:save', character, baseDirPath),
   deleteCharacter: (characterId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('characters:delete', characterId, baseDirPath),
+  listItems: (baseDirPath?: string) => ipcRenderer.invoke('items:list', baseDirPath),
+  saveItem: (item: ItemFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('items:save', item, baseDirPath),
+  deleteItem: (itemId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('items:delete', itemId, baseDirPath),
 });

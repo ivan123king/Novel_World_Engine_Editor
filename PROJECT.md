@@ -21,6 +21,7 @@ npm run dev
 
 - `electron/main/`：Electron 主进程，放项目打开、JSON 读写等本地能力。
 - `electron/main/characters/`：人物 JSON 文件读写服务，管理 `data/characters/*.json`。
+- `electron/main/items/`：物品 JSON 文件读写服务，管理 `data/items/*.json`。
 - `electron/main/file-system/`：本地基础目录解析、目录创建和通用 JSON 文件读写工具。
 - `electron/preload/`：安全 IPC 桥接，renderer 只能通过这里调用本地能力。
 - `src/`：Vue3 前端界面。

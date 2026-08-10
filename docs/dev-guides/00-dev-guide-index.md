@@ -23,6 +23,9 @@
 - `character/character-list-page.md`：人物列表页设计。修改人物卡片列表、新建弹框、详情弹框、编辑入口或人物 mock 数据展示时阅读。
 - `character/character-custom-fields.md`：人物自定义属性设计。修改人物新建/编辑弹框中的动态 key/value 属性、`customFields` 转换或详情展示时阅读。
 - `character/character-data-flow.md`：人物 JSON 文件读写流程。修改人物持久化、IPC、preload 或 renderer API 时阅读。
+- `items/item-module-design.md`：物品模块设计。修改物品类型、物品页面、自定义属性或后续物品 JSON 持久化时阅读。
+- `items/item-list-page.md`：物品列表页设计。修改物品页面布局、表单弹框、Inspector 或重复 key 提示时阅读。
+- `items/item-data-flow.md`：物品 JSON 文件读写流程。修改物品持久化、IPC、preload 或 renderer API 时阅读。
 
 ## 编写新指南
 
