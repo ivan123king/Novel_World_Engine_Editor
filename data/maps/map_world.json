@@ -1,0 +1,25 @@
+{
+  "id": "map_world",
+  "name": "世界地图",
+  "rootLocationId": "location_world",
+  "parentMapId": null,
+  "parentLocationId": null,
+  "background": null,
+  "viewport": {
+    "x": -154,
+    "y": -91,
+    "scale": 1
+  },
+  "pins": [
+    {
+      "id": "pin_msmzehw5_0pgu4d",
+      "locationId": "location_msmzehw5_yky7te",
+      "x": 311,
+      "y": 349,
+      "color": "#2563eb",
+      "icon": "location",
+      "showLabel": true
+    }
+  ],
+  "schemaVersion": 1
+}

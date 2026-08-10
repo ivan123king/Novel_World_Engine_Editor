@@ -3,6 +3,7 @@
  * 负责挂载 Vue 应用、配置路由和全局引入 Naive UI 组件库。
  */
 import { createApp } from 'vue';
+import VueKonva from 'vue-konva';
 import {
   create,
   NButton,
@@ -69,6 +70,6 @@ const naive = create({
 
 /**
  * 应用主入口。
- * 挂载顺序：路由 -> Naive UI -> 挂载到 #app
+ * 挂载顺序：路由 -> Naive UI -> Konva 画布组件 -> 挂载到 #app
  */
-createApp(App).use(router).use(naive).mount('#app');
+createApp(App).use(router).use(naive).use(VueKonva).mount('#app');

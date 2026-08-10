@@ -14,3 +14,19 @@ export {
   type ItemCustomFields,
   type ItemFile,
 } from './item';
+export {
+  LOCATION_SCHEMA_VERSION,
+  createEmptyLocation,
+  isLocationFile,
+  type LocationCustomFields,
+  type LocationFile,
+} from './location';
+export {
+  MAP_SCHEMA_VERSION,
+  createEmptyMap,
+  isMapFile,
+  type MapBackground,
+  type MapFile,
+  type MapPin,
+  type MapViewport,
+} from './map';

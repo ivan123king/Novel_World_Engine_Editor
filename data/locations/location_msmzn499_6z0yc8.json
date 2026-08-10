@@ -1,0 +1,14 @@
+{
+  "id": "location_msmzn499_6z0yc8",
+  "name": "六合",
+  "type": "地点",
+  "parentLocationId": "location_msmzehw5_yky7te",
+  "description": "",
+  "customFields": {
+    "2": 3
+  },
+  "schemaVersion": 1,
+  "customFieldOrder": [
+    "2"
+  ]
+}

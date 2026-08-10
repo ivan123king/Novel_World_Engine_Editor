@@ -1,0 +1,18 @@
+{
+  "id": "location_msmzehw5_yky7te",
+  "name": "南京",
+  "type": "地点",
+  "parentLocationId": "location_world",
+  "description": "",
+  "customFields": {
+    "1": 1,
+    "2": 2,
+    "22": 3
+  },
+  "schemaVersion": 1,
+  "customFieldOrder": [
+    "2",
+    "1",
+    "22"
+  ]
+}

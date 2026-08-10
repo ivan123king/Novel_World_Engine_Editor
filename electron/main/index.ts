@@ -10,6 +10,13 @@ import {
   listItems,
   saveItem,
 } from './items/item-service';
+import {
+  deleteLocationFile,
+  deleteMapFile,
+  listMapModule,
+  saveLocation,
+  saveMap,
+} from './maps/map-service';
 
 /** Electron 主进程入口，负责窗口创建和安全 IPC 注册。 */
 
@@ -72,6 +79,22 @@ ipcMain.handle('items:save', (_event, item, baseDirPath?: string) =>
 
 ipcMain.handle('items:delete', (_event, itemId: string, baseDirPath?: string) =>
   deleteItemFile(itemId, baseDirPath),
+);
+
+ipcMain.handle('maps:list-module', (_event, baseDirPath?: string) => listMapModule(baseDirPath));
+
+ipcMain.handle('locations:save', (_event, location, baseDirPath?: string) =>
+  saveLocation(location, baseDirPath),
+);
+
+ipcMain.handle('locations:delete', (_event, locationId: string, baseDirPath?: string) =>
+  deleteLocationFile(locationId, baseDirPath),
+);
+
+ipcMain.handle('maps:save', (_event, map, baseDirPath?: string) => saveMap(map, baseDirPath));
+
+ipcMain.handle('maps:delete', (_event, mapId: string, baseDirPath?: string) =>
+  deleteMapFile(mapId, baseDirPath),
 );
 
 app.whenReady().then(() => {

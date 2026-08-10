@@ -1,0 +1,34 @@
+{
+  "id": "map_msmzhy1k_lgeozv",
+  "name": "南京地图",
+  "rootLocationId": "location_msmzehw5_yky7te",
+  "parentMapId": "map_world",
+  "parentLocationId": "location_msmzehw5_yky7te",
+  "background": null,
+  "viewport": {
+    "x": -85,
+    "y": -8,
+    "scale": 1
+  },
+  "pins": [
+    {
+      "id": "pin_msmzievp_ggd9wo",
+      "locationId": "location_msmzievp_9essbm",
+      "x": 367,
+      "y": 336,
+      "color": "#2563eb",
+      "icon": "location",
+      "showLabel": true
+    },
+    {
+      "id": "pin_msmzn499_tvlw4v",
+      "locationId": "location_msmzn499_6z0yc8",
+      "x": 451,
+      "y": 239,
+      "color": "#16a34a",
+      "icon": "location",
+      "showLabel": true
+    }
+  ],
+  "schemaVersion": 1
+}
