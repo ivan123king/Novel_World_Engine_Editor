@@ -7,16 +7,21 @@ import type { CharacterFile, ItemFile, LocationFile, MapFile } from '../../src/t
  */
 contextBridge.exposeInMainWorld('novelEngine', {
   getAppInfo: () => ipcRenderer.invoke('app:get-info'),
+
+  //人物模块
   listCharacters: (baseDirPath?: string) => ipcRenderer.invoke('characters:list', baseDirPath),
   saveCharacter: (character: CharacterFile, baseDirPath?: string) =>
     ipcRenderer.invoke('characters:save', character, baseDirPath),
   deleteCharacter: (characterId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('characters:delete', characterId, baseDirPath),
+
+  //物品模块
   listItems: (baseDirPath?: string) => ipcRenderer.invoke('items:list', baseDirPath),
   saveItem: (item: ItemFile, baseDirPath?: string) =>
     ipcRenderer.invoke('items:save', item, baseDirPath),
   deleteItem: (itemId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('items:delete', itemId, baseDirPath),
+  //地图模块
   listMapModule: (baseDirPath?: string) => ipcRenderer.invoke('maps:list-module', baseDirPath),
   saveLocation: (location: LocationFile, baseDirPath?: string) =>
     ipcRenderer.invoke('locations:save', location, baseDirPath),

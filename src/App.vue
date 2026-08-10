@@ -40,7 +40,7 @@ const navigationItems: NavigationItem[] = [
   { label: '项目首页', key: '/' },
   { label: '人物', key: '/characters' },
   { label: '物品', key: '/items' },
-  { label: '地点', key: '/locations' },
+  { label: '地图', key: '/locations' },
   { label: '关系', key: '/relations' },
   { label: '剧情', key: '/events' },
   { label: '时间线', key: '/timeline' },

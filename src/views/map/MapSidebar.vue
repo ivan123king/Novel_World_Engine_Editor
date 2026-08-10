@@ -65,7 +65,7 @@ const emit = defineEmits<{
     <input
       class="search-box"
       type="text"
-      placeholder="搜索地点、风土、人情"
+      placeholder="搜索地点、自定义信息"
       :value="searchKeyword"
       @input="emit('update:searchKeyword', ($event.target as HTMLInputElement).value)"
     />
