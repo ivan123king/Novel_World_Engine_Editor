@@ -1,0 +1,15 @@
+{
+  "id": "char_msn20o4t_ul3wg8",
+  "name": "张强 副本",
+  "age": 22,
+  "traits": [
+    "天气",
+    "真实"
+  ],
+  "appearance": "223",
+  "customFields": {
+    "武学": 3,
+    "危险等级": "A"
+  },
+  "schemaVersion": 1
+}

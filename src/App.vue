@@ -82,7 +82,7 @@ onMounted(async () => {
 
 <template>
   <!-- 主布局容器，使用 Naive UI 的 NLayout 组件 -->
-  <n-layout style="min-height: 100vh">
+  <n-layout class="app-shell">
     <!-- 顶部项目栏：展示应用名、项目名、项目元信息 -->
     <n-layout-header bordered style="height: 76px; padding: 14px 22px">
       <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 100%">
@@ -112,7 +112,7 @@ onMounted(async () => {
     </n-layout-header>
 
     <!-- 下方布局：左侧导航 + 右侧内容 -->
-    <n-layout has-sider>
+    <n-layout class="app-body" has-sider>
       <!-- 左侧模块导航栏 -->
       <n-layout-sider
         bordered
@@ -137,9 +137,30 @@ onMounted(async () => {
       </n-layout-sider>
 
       <!-- 右侧页面内容区 -->
-      <n-layout-content content-style="padding: 24px">
+      <n-layout-content class="workbench-content" content-style="height: 100%; padding: 24px; overflow: auto">
         <RouterView />
       </n-layout-content>
     </n-layout>
   </n-layout>
 </template>
+
+<style scoped>
+/** 应用外壳固定在 Electron 可视区内，避免模块内容触发 body 级滚动。 */
+.app-shell {
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+/** 顶部项目栏下方的主工作区，高度扣除固定项目栏。 */
+.app-body {
+  height: calc(100vh - 76px);
+  min-height: 0;
+}
+
+/** 右侧路由承载区，滚动边界由各模块内部进一步控制。 */
+.workbench-content {
+  height: 100%;
+  min-height: 0;
+}
+</style>

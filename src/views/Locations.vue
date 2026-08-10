@@ -87,7 +87,9 @@ const mapWorkbench = useMapWorkbench();
   display: grid;
   grid-template-columns: 260px minmax(560px, 1fr) 320px;
   gap: 16px;
-  min-height: calc(100vh - 124px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   color: #172033;
 }
 </style>

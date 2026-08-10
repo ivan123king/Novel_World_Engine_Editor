@@ -296,9 +296,12 @@ onMounted(() => {
 <style scoped>
 /** 物品页面整体布局，沿用人物模块的工作台密度。 */
 .item-page {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  min-height: calc(100vh - 124px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /** 页面顶部工具栏。 */
@@ -352,6 +355,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 16px;
+  flex: 1;
   min-height: 0;
 }
 
@@ -457,6 +461,7 @@ onMounted(() => {
   min-width: 0;
   min-height: 0;
   padding: 18px;
+  overflow: auto;
   background: #ffffff;
   border: 1px solid #d9e1ea;
   border-radius: 8px;
