@@ -95,19 +95,7 @@ onMounted(async () => {
             {{ mockNovel.title }}
           </h1>
         </div>
-
-        <!-- 右侧：项目状态元信息 -->
-        <n-space size="small" wrap>
-          <n-tag size="small" round>
-            {{ mockNovel.projectPath }}
-          </n-tag>
-          <n-tag size="small" round type="info">
-            第 {{ mockNovel.currentChapter }} 章
-          </n-tag>
-          <n-tag size="small" round type="success">
-            {{ mockNovel.saveState }}
-          </n-tag>
-        </n-space>
+       
       </div>
     </n-layout-header>
 

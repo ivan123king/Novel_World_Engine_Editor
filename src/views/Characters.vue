@@ -109,9 +109,6 @@ onMounted(() => {
     <header class="character-toolbar">
       <div class="character-title-group">
         <h2 class="character-title">人物</h2>
-        <n-text depth="3" class="character-subtitle">
-          {{ dataDirectory || '正在读取数据目录...' }}
-        </n-text>
       </div>
 
       <n-space align="center" size="small">
@@ -186,9 +183,6 @@ onMounted(() => {
         <div v-if="selectedCharacter" class="inspector-content">
           <div class="inspector-header">
             <div class="inspector-title-group">
-              <n-text depth="3" class="inspector-id">
-                {{ selectedCharacter.id }}
-              </n-text>
               <h3 class="inspector-title">{{ selectedCharacter.name }}</h3>
             </div>
 

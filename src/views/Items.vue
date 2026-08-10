@@ -85,9 +85,6 @@ onMounted(() => {
     <header class="item-toolbar">
       <div class="item-title-group">
         <h2 class="item-title">物品</h2>
-        <n-text depth="3" class="item-subtitle">
-          {{ dataDirectory || '正在读取数据目录...' }}
-        </n-text>
       </div>
 
       <n-space align="center" size="small">
@@ -158,9 +155,6 @@ onMounted(() => {
         <div v-if="selectedItem" class="inspector-content">
           <div class="inspector-header">
             <div class="inspector-title-group">
-              <n-text depth="3" class="inspector-id">
-                {{ selectedItem.id }}
-              </n-text>
               <h3 class="inspector-title">{{ selectedItem.name }}</h3>
             </div>
 
