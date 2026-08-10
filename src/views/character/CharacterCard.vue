@@ -55,13 +55,13 @@ function formatTraits(traits: string[]): string {
 
       <!-- 人物属性描述列表 -->
       <n-descriptions :column="1" size="small" bordered label-placement="left">
-        <n-descriptions-item label="姓名" label-style="width: 52px">
+        <n-descriptions-item label="姓名" label-style="width: 62px">
           {{ character.name }}
         </n-descriptions-item>
-        <n-descriptions-item label="年龄" label-style="width: 52px">
+        <n-descriptions-item label="年龄" label-style="width: 62px">
           {{ formatAge(character.age) }}
         </n-descriptions-item>
-        <n-descriptions-item label="性格" label-style="width: 52px">
+        <n-descriptions-item label="性格" label-style="width: 62px">
           <n-text :depth="character.traits.length > 0 ? false : 3">
             {{ formatTraits(character.traits) }}
           </n-text>

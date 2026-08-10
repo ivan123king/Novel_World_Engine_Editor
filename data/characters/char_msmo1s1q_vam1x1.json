@@ -1,0 +1,15 @@
+{
+  "id": "char_msmo1s1q_vam1x1",
+  "name": "张强",
+  "age": 22,
+  "traits": [
+    "天气",
+    "真实"
+  ],
+  "appearance": "223",
+  "customFields": {
+    "武学": 3,
+    "危险等级": "A"
+  },
+  "schemaVersion": 1
+}

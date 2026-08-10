@@ -21,6 +21,8 @@
 - `json-file-store.md`：本地 JSON 文件工具设计。修改 Electron main process 文件读写、目录解析、JSON 保存/读取、路径边界校验时阅读。
 - `main-workbench-layout.md`：主工作台整体页面结构。修改顶部项目栏、左侧模块导航、右侧页面容器、路由入口或 `mock_data/` 规则时阅读。
 - `character/character-list-page.md`：人物列表页设计。修改人物卡片列表、新建弹框、详情弹框、编辑入口或人物 mock 数据展示时阅读。
+- `character/character-custom-fields.md`：人物自定义属性设计。修改人物新建/编辑弹框中的动态 key/value 属性、`customFields` 转换或详情展示时阅读。
+- `character/character-data-flow.md`：人物 JSON 文件读写流程。修改人物持久化、IPC、preload 或 renderer API 时阅读。
 
 ## 编写新指南
 

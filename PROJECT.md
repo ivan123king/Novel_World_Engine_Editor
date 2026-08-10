@@ -20,9 +20,11 @@ npm run dev
 ## 文件分类
 
 - `electron/main/`：Electron 主进程，放项目打开、JSON 读写等本地能力。
+- `electron/main/characters/`：人物 JSON 文件读写服务，管理 `data/characters/*.json`。
 - `electron/main/file-system/`：本地基础目录解析、目录创建和通用 JSON 文件读写工具。
 - `electron/preload/`：安全 IPC 桥接，renderer 只能通过这里调用本地能力。
 - `src/`：Vue3 前端界面。
+- `src/api/`：renderer 侧类型化 API 封装，负责调用 preload 暴露的安全接口。
 - `src/components/common/`：跨模块复用的 Vue 公共组件。
 - `src/router/`：renderer 页面路由配置，用于主工作台模块切换。
 - `src/views/`：主工作台右侧承载的模块页面。

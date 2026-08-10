@@ -1,8 +1,16 @@
-﻿import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
+import {
+  deleteCharacterFile,
+  listCharacters,
+  saveCharacter,
+} from './characters/character-service';
+
+/** Electron 主进程入口，负责窗口创建和安全 IPC 注册。 */
 
 const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
+/** 创建主窗口并加载 renderer 页面。 */
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -40,6 +48,16 @@ ipcMain.handle('app:get-info', () => ({
   version: app.getVersion(),
   storage: '本地 JSON 文件',
 }));
+
+ipcMain.handle('characters:list', (_event, baseDirPath?: string) => listCharacters(baseDirPath));
+
+ipcMain.handle('characters:save', (_event, character, baseDirPath?: string) =>
+  saveCharacter(character, baseDirPath),
+);
+
+ipcMain.handle('characters:delete', (_event, characterId: string, baseDirPath?: string) =>
+  deleteCharacterFile(characterId, baseDirPath),
+);
 
 app.whenReady().then(() => {
   createWindow();
