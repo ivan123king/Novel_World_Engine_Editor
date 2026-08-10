@@ -2,6 +2,7 @@ export type { JsonObject, JsonPrimitive, JsonValue } from './json-value';
 export {
   CHARACTER_SCHEMA_VERSION,
   createEmptyCharacter,
+  getCharacterCustomFieldEntries,
   isCharacterFile,
   type CharacterCustomFields,
   type CharacterFile,

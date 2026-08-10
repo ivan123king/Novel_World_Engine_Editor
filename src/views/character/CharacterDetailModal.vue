@@ -6,7 +6,7 @@
  */
 import { computed } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
-import type { CharacterFile, JsonValue } from '@/types';
+import { getCharacterCustomFieldEntries, type CharacterFile, type JsonValue } from '@/types';
 
 const props = defineProps<{
   /** 控制弹框显示/隐藏。 */
@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>();
 
 /** 当前人物的自定义字段条目，用于模板逐行展示。 */
-const customFieldEntries = computed(() => Object.entries(props.character?.customFields ?? {}));
+const customFieldEntries = computed(() => getCharacterCustomFieldEntries(props.character));
 
 /**
  * 获取弹框标题文本。

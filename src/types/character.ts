@@ -32,6 +32,9 @@ export interface CharacterFile {
   /** 作者自定义字段，承载武学、身体情况、官职履历等开放设定。 */
   customFields: CharacterCustomFields;
 
+  /** 自定义字段展示顺序；用于保留作者在表单中的 key 排列顺序。 */
+  customFieldOrder?: string[];
+
   /** 人物文件结构版本，用于后续迁移。 */
   schemaVersion: typeof CHARACTER_SCHEMA_VERSION;
 }
@@ -53,6 +56,34 @@ export function createEmptyCharacter(id: string, name = ''): CharacterFile {
 }
 
 /**
+ * 按人物保存的自定义字段顺序返回条目。
+ * 旧文件没有 customFieldOrder 时，回退到 JSON 对象自身顺序。
+ */
+export function getCharacterCustomFieldEntries(character: CharacterFile | null): [string, JsonValue][] {
+  if (!character) {
+    return [];
+  }
+
+  const usedKeys = new Set<string>();
+  const orderedEntries: [string, JsonValue][] = [];
+
+  character.customFieldOrder?.forEach((fieldKey) => {
+    if (Object.prototype.hasOwnProperty.call(character.customFields, fieldKey)) {
+      usedKeys.add(fieldKey);
+      orderedEntries.push([fieldKey, character.customFields[fieldKey]]);
+    }
+  });
+
+  Object.entries(character.customFields).forEach(([fieldKey, fieldValue]) => {
+    if (!usedKeys.has(fieldKey)) {
+      orderedEntries.push([fieldKey, fieldValue]);
+    }
+  });
+
+  return orderedEntries;
+}
+
+/**
  * 判断未知数据是否满足人物文件的最小结构。
  * 这里只校验系统必须字段，自定义字段内容由作者自由决定。
  */
@@ -64,6 +95,10 @@ export function isCharacterFile(value: unknown): value is CharacterFile {
   const data = value as Partial<CharacterFile>;
   const ageIsValid =
     typeof data.age === 'number' || typeof data.age === 'string' || data.age === null;
+  const customFieldOrderIsValid =
+    data.customFieldOrder === undefined ||
+    (Array.isArray(data.customFieldOrder) &&
+      data.customFieldOrder.every((fieldKey) => typeof fieldKey === 'string'));
 
   return (
     typeof data.id === 'string' &&
@@ -75,6 +110,7 @@ export function isCharacterFile(value: unknown): value is CharacterFile {
     typeof data.customFields === 'object' &&
     data.customFields !== null &&
     !Array.isArray(data.customFields) &&
+    customFieldOrderIsValid &&
     data.schemaVersion === CHARACTER_SCHEMA_VERSION
   );
 }

@@ -7,6 +7,7 @@ import {
 import {
   CHARACTER_SCHEMA_VERSION,
   createEmptyCharacter,
+  getCharacterCustomFieldEntries,
   type CharacterCustomFields,
   type CharacterFile,
   type JsonValue,
@@ -114,26 +115,36 @@ function parseCustomFieldValue(rawValue: string): JsonValue {
 }
 
 /** 将人物 customFields 转换为可编辑的 key/value 表单行。 */
-function createCustomFieldRows(customFields: CharacterCustomFields = {}): CharacterCustomFieldRow[] {
-  const rows = Object.entries(customFields).map(([key, value]) =>
+function createCustomFieldRows(character?: CharacterFile): CharacterCustomFieldRow[] {
+  const rows = getCharacterCustomFieldEntries(character ?? null).map(([key, value]) =>
     createCustomFieldRow(key, stringifyCustomFieldValue(value)),
   );
 
   return rows.length > 0 ? rows : [createCustomFieldRow()];
 }
 
-/** 将 key/value 表单行转换为人物 customFields，空 key 会被忽略。 */
-function normalizeCustomFields(rows: CharacterCustomFieldRow[]): CharacterCustomFields {
-  return rows.reduce<CharacterCustomFields>((fields, row) => {
+/** 将 key/value 表单行转换为人物 customFields 和顺序，空 key 会被忽略。 */
+function normalizeCustomFields(rows: CharacterCustomFieldRow[]): {
+  customFields: CharacterCustomFields;
+  customFieldOrder: string[];
+} {
+  const customFieldOrder: string[] = [];
+  const customFields = rows.reduce<CharacterCustomFields>((fields, row) => {
     const fieldKey = row.key.trim();
 
     if (!fieldKey) {
       return fields;
     }
 
+    customFieldOrder.push(fieldKey);
     fields[fieldKey] = parseCustomFieldValue(row.value);
     return fields;
   }, {});
+
+  return {
+    customFields,
+    customFieldOrder,
+  };
 }
 
 /** 生成人物表单默认值。 */
@@ -143,7 +154,7 @@ export function createCharacterFormValues(character?: CharacterFile): CharacterF
     age: character?.age === null || character?.age === undefined ? '' : String(character.age),
     traits: character?.traits.join('，') ?? '',
     appearance: character?.appearance ?? '',
-    customFields: createCustomFieldRows(character?.customFields),
+    customFields: createCustomFieldRows(character),
   };
 }
 
@@ -281,7 +292,9 @@ export function useCharacterList() {
     nextCharacter.age = normalizeAge(values.age);
     nextCharacter.traits = normalizeTraits(values.traits);
     nextCharacter.appearance = values.appearance.trim();
-    nextCharacter.customFields = normalizeCustomFields(values.customFields);
+    const { customFields, customFieldOrder } = normalizeCustomFields(values.customFields);
+    nextCharacter.customFields = customFields;
+    nextCharacter.customFieldOrder = customFieldOrder;
     nextCharacter.schemaVersion = original?.schemaVersion ?? CHARACTER_SCHEMA_VERSION;
 
     return nextCharacter;
@@ -295,9 +308,7 @@ export function useCharacterList() {
     try {
       const nextCharacter = buildCharacterFromForm(values);
       const savedCharacter = await saveCharacter(nextCharacter);
-      characters.value = [...characters.value, savedCharacter].sort((left, right) =>
-        left.name.localeCompare(right.name, 'zh-Hans-CN'),
-      );
+      characters.value = [...characters.value, savedCharacter];
       selectedCharacterId.value = savedCharacter.id;
       closeCreate();
     } catch (error) {
@@ -324,8 +335,7 @@ export function useCharacterList() {
       const savedCharacter = await saveCharacter(nextCharacter);
 
       characters.value = characters.value
-        .map((character) => (character.id === characterId ? savedCharacter : character))
-        .sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN'));
+        .map((character) => (character.id === characterId ? savedCharacter : character));
       selectedCharacterId.value = savedCharacter.id;
       closeEdit();
     } catch (error) {
@@ -373,9 +383,7 @@ export function useCharacterList() {
       };
       const savedCharacter = await saveCharacter(nextCharacter);
 
-      characters.value = [...characters.value, savedCharacter].sort((left, right) =>
-        left.name.localeCompare(right.name, 'zh-Hans-CN'),
-      );
+      characters.value = [...characters.value, savedCharacter];
       selectedCharacterId.value = savedCharacter.id;
     } catch (error) {
       saveError.value = formatError(error);

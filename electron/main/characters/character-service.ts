@@ -95,8 +95,6 @@ export async function listCharacters(baseDirPath?: string): Promise<CharacterLis
     }
   }
 
-  characters.sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN'));
-
   return {
     baseDir,
     characters,

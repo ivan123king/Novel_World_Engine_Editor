@@ -6,7 +6,7 @@
 import { computed, onMounted } from 'vue';
 import CharacterFormModal from '@/views/character/CharacterFormModal.vue';
 import { useCharacterList } from '@/views/character/useCharacterList';
-import type { CharacterFile, JsonValue } from '@/types';
+import { getCharacterCustomFieldEntries, type CharacterFile, type JsonValue } from '@/types';
 
 const {
   filteredCharacters,
@@ -35,7 +35,7 @@ const {
 } = useCharacterList();
 
 /** 当前选中人物的自定义属性条目。 */
-const selectedCustomFields = computed(() => Object.entries(selectedCharacter.value?.customFields ?? {}));
+const selectedCustomFields = computed(() => getCharacterCustomFieldEntries(selectedCharacter.value));
 
 /** 页面当前是否没有任何人物数据。 */
 const isEmpty = computed(() => !isLoading.value && characterCount.value === 0);

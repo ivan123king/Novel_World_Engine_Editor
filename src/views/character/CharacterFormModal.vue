@@ -4,7 +4,7 @@
  * 使用 Naive UI 的 NForm、NFormItem、NInput 组件构建表单，
  * 复用于新建和编辑场景，处理基础字段和自定义 key/value 属性。
  */
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
 import type { CharacterFile } from '@/types';
 import {
@@ -34,6 +34,15 @@ const emit = defineEmits<{
 /** 表单响应式数据对象。 */
 const formValues = reactive<CharacterFormValues>(createCharacterFormValues());
 
+/** 当前表单中的重复 key。 */
+const duplicateFieldKeys = computed(() => findDuplicateFieldKeys(formValues.customFields));
+
+/** 是否存在重复 key。 */
+const hasDuplicateKeys = computed(() => duplicateFieldKeys.value.length > 0);
+
+/** 表单是否允许提交。 */
+const canSubmitForm = computed(() => !hasDuplicateKeys.value);
+
 /**
  * 根据当前模式和人物数据重置表单到初始状态。
  * - 新建模式：使用空表单
@@ -62,10 +71,44 @@ function removeCustomField(index: number): void {
 }
 
 /**
+ * 找出表单中的重复 key。
+ * 空 key 不参与重复判断。
+ */
+function findDuplicateFieldKeys(rows: CharacterFormValues['customFields']): string[] {
+  const keyCount = new Map<string, number>();
+
+  rows.forEach((row) => {
+    const fieldKey = row.key.trim();
+
+    if (!fieldKey) {
+      return;
+    }
+
+    keyCount.set(fieldKey, (keyCount.get(fieldKey) ?? 0) + 1);
+  });
+
+  return Array.from(keyCount.entries())
+    .filter(([, count]) => count > 1)
+    .map(([key]) => key);
+}
+
+/**
+ * 判断某一行 key 是否重复。
+ * @param key 当前行 key
+ */
+function isDuplicateFieldKey(key: string): boolean {
+  return duplicateFieldKeys.value.includes(key.trim());
+}
+
+/**
  * 提交表单数据。
  * 触发 submit 事件，将当前表单值的副本传递给父组件处理。
  */
 function submitForm(): void {
+  if (!canSubmitForm.value) {
+    return;
+  }
+
   emit('submit', {
     ...formValues,
     customFields: formValues.customFields.map((row) => ({ ...row })),
@@ -142,11 +185,16 @@ watch(
         </n-button>
       </div>
 
+      <div v-if="hasDuplicateKeys" class="duplicate-warning">
+        存在重复 key：{{ duplicateFieldKeys.join('、') }}。请修改后再保存。
+      </div>
+
       <div class="custom-field-list">
         <div
           v-for="(field, index) in formValues.customFields"
           :key="field.id"
           class="custom-field-row"
+          :class="{ 'has-duplicate-key': isDuplicateFieldKey(field.key) }"
         >
           <n-input
             v-model:value="field.key"
@@ -179,7 +227,12 @@ watch(
         <n-button @click="emit('close')">
           取消
         </n-button>
-        <n-button type="primary" :loading="props.submitting" @click="submitForm">
+        <n-button
+          type="primary"
+          :loading="props.submitting"
+          :disabled="!canSubmitForm"
+          @click="submitForm"
+        >
           保存
         </n-button>
       </div>
@@ -209,6 +262,18 @@ watch(
   gap: 12px;
 }
 
+/** 重复 key 提示。 */
+.duplicate-warning {
+  margin-bottom: 12px;
+  padding: 9px 11px;
+  color: #9f3a2f;
+  background: #fff1ef;
+  border: 1px solid #f0c4bf;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /**
  * 单条自定义属性输入行。
  * 移动端自动压缩输入框宽度，避免按钮和文本互相遮挡。
@@ -218,6 +283,11 @@ watch(
   grid-template-columns: minmax(120px, 1fr) 18px minmax(120px, 1fr) 34px;
   gap: 10px;
   align-items: center;
+}
+
+/** 重复 key 行的视觉提示。 */
+.custom-field-row.has-duplicate-key :deep(.n-input-wrapper) {
+  border-color: #d03050;
 }
 
 /** 自定义属性 key/value 之间的等号。 */
