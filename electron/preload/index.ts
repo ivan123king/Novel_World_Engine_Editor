@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('characters:save', character, baseDirPath),
   deleteCharacter: (characterId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('characters:delete', characterId, baseDirPath),
+  saveCharacterOrder: (characterIds: string[], baseDirPath?: string) =>
+    ipcRenderer.invoke('characters:save-order', characterIds, baseDirPath),
 
   //物品模块
   listItems: (baseDirPath?: string) => ipcRenderer.invoke('items:list', baseDirPath),
@@ -21,6 +23,8 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('items:save', item, baseDirPath),
   deleteItem: (itemId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('items:delete', itemId, baseDirPath),
+  saveItemOrder: (itemIds: string[], baseDirPath?: string) =>
+    ipcRenderer.invoke('items:save-order', itemIds, baseDirPath),
   //地图模块
   listMapModule: (baseDirPath?: string) => ipcRenderer.invoke('maps:list-module', baseDirPath),
   saveLocation: (location: LocationFile, baseDirPath?: string) =>

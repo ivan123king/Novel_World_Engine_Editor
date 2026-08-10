@@ -8,6 +8,8 @@
 data/
   characters/
     char_xxx.json
+  list-orders/
+    characters.json
 ```
 
 当前没有项目选择器时，默认使用仓库运行目录下的 `data` 目录。
@@ -32,6 +34,9 @@ Characters.vue
 - 人物 ID 同时作为文件名，只允许字母、数字、下划线和短横线。
 - 读取、保存、复制后不主动按名称排序，页面尽量保留用户当前编辑和追加顺序。
 - 保存人物时会写入可选 `customFieldOrder`，用于稳定保留自定义属性展示顺序。
+- 页面加载时按 `list-orders/characters.json` 恢复用户拖动后的展示顺序。
+- 新建、复制、删除和拖动排序后会同步保存 `list-orders/characters.json`。
+- 排序文件缺失不报错；排序文件损坏时只作为非致命错误展示，不阻断人物列表读取。
 
 ## 维护规则
 

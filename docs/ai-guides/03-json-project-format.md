@@ -13,6 +13,9 @@ JSON schema 只固定系统运行需要的最小字段。小说设定本身必�
 ```text
 novel-project/
   novel.json
+  list-orders/
+    characters.json
+    items.json
   characters/
     char_001.json
     char_002.json
@@ -48,6 +51,25 @@ novel-project/
   "schemaVersion": 1
 }
 ```
+
+## 列表排序文件
+
+人物、物品等列表的展示顺序属于作者工作台偏好，不属于人物或物品的题材设定。排序应保存为独立元数据文件：
+
+```json
+{
+  "entityType": "characters",
+  "ids": ["char_linchen", "char_suqin"],
+  "schemaVersion": 1
+}
+```
+
+当前路径：
+
+- `list-orders/characters.json`
+- `list-orders/items.json`
+
+读取实体列表时按 `ids` 恢复展示顺序；排序文件缺失时保留当前读取顺序；排序文件中已不存在的 ID 应忽略。不要为了列表排序修改人物或物品文件的题材字段。
 
 ## 人物文件
 

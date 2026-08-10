@@ -6,6 +6,7 @@ import {
   resolvePathInBaseDirectory,
 } from '../file-system/directory';
 import { loadJsonFileAs, saveJsonFile } from '../file-system/json-file-store';
+import { applyListOrder, loadListOrder, saveListOrder } from '../list-order/list-order-service';
 import { isCharacterFile, type CharacterFile } from '../../../src/types/character';
 
 /**
@@ -95,9 +96,15 @@ export async function listCharacters(baseDirPath?: string): Promise<CharacterLis
     }
   }
 
+  const orderResult = await loadListOrder('characters', baseDir);
+
+  if (orderResult.error) {
+    errors.push(orderResult.error);
+  }
+
   return {
     baseDir,
-    characters,
+    characters: applyListOrder(characters, orderResult.ids),
     errors,
   };
 }
@@ -135,4 +142,16 @@ export async function deleteCharacterFile(
   const filePath = resolveCharacterFilePath(characterId, baseDirPath);
 
   await rm(filePath, { force: true });
+}
+
+/**
+ * 保存人物列表的用户自定义顺序。
+ * @param characterIds 当前人物 ID 展示顺序
+ * @param baseDirPath 可选的数据基础目录
+ */
+export async function saveCharacterOrder(
+  characterIds: string[],
+  baseDirPath?: string,
+): Promise<void> {
+  await saveListOrder('characters', characterIds, baseDirPath);
 }

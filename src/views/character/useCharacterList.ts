@@ -3,6 +3,7 @@ import {
   deleteCharacter as deleteCharacterFile,
   listCharacters as loadCharacterFiles,
   saveCharacter,
+  saveCharacterOrder,
 } from '@/api/characterApi';
 import {
   CHARACTER_SCHEMA_VERSION,
@@ -31,6 +32,9 @@ export interface CharacterFormValues {
   appearance: string;
   customFields: CharacterCustomFieldRow[];
 }
+
+/** 列表拖放插入位置。 */
+export type CharacterDropPlacement = 'before' | 'after';
 
 /** 自定义属性行 ID 计数器，保证同一页面会话内的行 key 稳定。 */
 let customFieldRowSeed = 0;
@@ -195,6 +199,39 @@ function characterMatchesKeyword(character: CharacterFile, keyword: string): boo
   return searchableText.includes(normalizedKeyword);
 }
 
+/**
+ * 将指定实体移动到目标实体之前或之后。
+ * 搜索过滤状态下仍基于完整列表重排，隐藏项会保留其相对顺序。
+ */
+function moveEntityNear<T extends { id: string }>(
+  entities: T[],
+  movedId: string,
+  targetId: string,
+  placement: CharacterDropPlacement,
+): T[] {
+  if (movedId === targetId) {
+    return entities;
+  }
+
+  const sourceIndex = entities.findIndex((entity) => entity.id === movedId);
+  const targetExists = entities.some((entity) => entity.id === targetId);
+
+  if (sourceIndex < 0 || !targetExists) {
+    return entities;
+  }
+
+  const nextEntities = [...entities];
+  const [movedEntity] = nextEntities.splice(sourceIndex, 1);
+  const targetIndex = nextEntities.findIndex((entity) => entity.id === targetId);
+
+  if (targetIndex < 0) {
+    return entities;
+  }
+
+  nextEntities.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movedEntity);
+  return nextEntities;
+}
+
 /** 管理人物列表页的文件持久化状态和 UI 交互状态。 */
 export function useCharacterList() {
   const characters = ref<CharacterFile[]>([]);
@@ -209,6 +246,9 @@ export function useCharacterList() {
   const fileErrors = ref<string[]>([]);
   const dataDirectory = ref('');
   const searchKeyword = ref('');
+  const draggingCharacterId = ref<string | null>(null);
+  const dragOverCharacterId = ref<string | null>(null);
+  const characterDropPlacement = ref<CharacterDropPlacement>('before');
 
   const characterCount = computed(() => characters.value.length);
   const filteredCharacters = computed(() =>
@@ -220,6 +260,11 @@ export function useCharacterList() {
       filteredCharacters.value[0] ??
       null,
   );
+
+  /** 保存当前人物 ID 顺序到本地排序元数据文件。 */
+  async function persistCharacterOrder(nextCharacters: CharacterFile[]): Promise<void> {
+    await saveCharacterOrder(nextCharacters.map((character) => character.id));
+  }
 
   /** 从本地 JSON 文件重新读取人物列表。 */
   async function loadCharacters(): Promise<void> {
@@ -308,9 +353,12 @@ export function useCharacterList() {
     try {
       const nextCharacter = buildCharacterFromForm(values);
       const savedCharacter = await saveCharacter(nextCharacter);
-      characters.value = [...characters.value, savedCharacter];
+      const nextCharacters = [...characters.value, savedCharacter];
+
+      characters.value = nextCharacters;
       selectedCharacterId.value = savedCharacter.id;
       closeCreate();
+      await persistCharacterOrder(nextCharacters);
     } catch (error) {
       saveError.value = formatError(error);
     } finally {
@@ -352,7 +400,9 @@ export function useCharacterList() {
 
     try {
       await deleteCharacterFile(characterId);
-      characters.value = characters.value.filter((character) => character.id !== characterId);
+      const nextCharacters = characters.value.filter((character) => character.id !== characterId);
+
+      characters.value = nextCharacters;
 
       if (selectedCharacterId.value === characterId) {
         selectedCharacterId.value = null;
@@ -361,6 +411,8 @@ export function useCharacterList() {
       if (editingCharacter.value?.id === characterId) {
         closeEdit();
       }
+
+      await persistCharacterOrder(nextCharacters);
     } catch (error) {
       saveError.value = formatError(error);
     } finally {
@@ -382,10 +434,85 @@ export function useCharacterList() {
         schemaVersion: CHARACTER_SCHEMA_VERSION,
       };
       const savedCharacter = await saveCharacter(nextCharacter);
+      const nextCharacters = [...characters.value, savedCharacter];
 
-      characters.value = [...characters.value, savedCharacter];
+      characters.value = nextCharacters;
       selectedCharacterId.value = savedCharacter.id;
+      await persistCharacterOrder(nextCharacters);
     } catch (error) {
+      saveError.value = formatError(error);
+    } finally {
+      isSaving.value = false;
+    }
+  }
+
+  /** 开始拖动人物列表项。 */
+  function startCharacterDrag(characterId: string): void {
+    if (isSaving.value || isLoading.value) {
+      return;
+    }
+
+    draggingCharacterId.value = characterId;
+    dragOverCharacterId.value = characterId;
+  }
+
+  /** 记录当前拖动悬停的人物，用于高亮潜在插入位置。 */
+  function hoverCharacterDropTarget(
+    characterId: string,
+    placement: CharacterDropPlacement,
+  ): void {
+    if (!draggingCharacterId.value || draggingCharacterId.value === characterId) {
+      dragOverCharacterId.value = null;
+      return;
+    }
+
+    dragOverCharacterId.value = characterId;
+    characterDropPlacement.value = placement;
+  }
+
+  /** 清理人物拖拽状态。 */
+  function resetCharacterDrag(): void {
+    draggingCharacterId.value = null;
+    dragOverCharacterId.value = null;
+    characterDropPlacement.value = 'before';
+  }
+
+  /**
+   * 完成人物拖放并立即写入排序文件。
+   * 保存失败时回滚本次视觉顺序，避免界面和 JSON 元数据不一致。
+   */
+  async function dropCharacterOn(
+    targetCharacterId: string,
+    placement: CharacterDropPlacement,
+  ): Promise<void> {
+    const movedCharacterId = draggingCharacterId.value;
+    resetCharacterDrag();
+
+    if (!movedCharacterId || movedCharacterId === targetCharacterId) {
+      return;
+    }
+
+    const previousCharacters = characters.value;
+    const nextCharacters = moveEntityNear(
+      previousCharacters,
+      movedCharacterId,
+      targetCharacterId,
+      placement,
+    );
+
+    if (nextCharacters === previousCharacters) {
+      return;
+    }
+
+    isSaving.value = true;
+    saveError.value = '';
+    characters.value = nextCharacters;
+    selectedCharacterId.value = movedCharacterId;
+
+    try {
+      await persistCharacterOrder(nextCharacters);
+    } catch (error) {
+      characters.value = previousCharacters;
       saveError.value = formatError(error);
     } finally {
       isSaving.value = false;
@@ -407,6 +534,9 @@ export function useCharacterList() {
     fileErrors,
     dataDirectory,
     searchKeyword,
+    draggingCharacterId,
+    dragOverCharacterId,
+    characterDropPlacement,
     loadCharacters,
     openDetail,
     closeDetail,
@@ -418,5 +548,9 @@ export function useCharacterList() {
     duplicateCharacter,
     createCharacter,
     updateCharacter,
+    startCharacterDrag,
+    hoverCharacterDropTarget,
+    resetCharacterDrag,
+    dropCharacterOn,
   };
 }

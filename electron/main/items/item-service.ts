@@ -6,6 +6,7 @@ import {
   resolvePathInBaseDirectory,
 } from '../file-system/directory';
 import { loadJsonFileAs, saveJsonFile } from '../file-system/json-file-store';
+import { applyListOrder, loadListOrder, saveListOrder } from '../list-order/list-order-service';
 import { isItemFile, type ItemFile } from '../../../src/types/item';
 
 /**
@@ -95,11 +96,15 @@ export async function listItems(baseDirPath?: string): Promise<ItemListResult> {
     }
   }
 
-  items.sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN'));
+  const orderResult = await loadListOrder('items', baseDir);
+
+  if (orderResult.error) {
+    errors.push(orderResult.error);
+  }
 
   return {
     baseDir,
-    items,
+    items: applyListOrder(items, orderResult.ids),
     errors,
   };
 }
@@ -131,4 +136,13 @@ export async function deleteItemFile(itemId: string, baseDirPath?: string): Prom
   const filePath = resolveItemFilePath(itemId, baseDirPath);
 
   await rm(filePath, { force: true });
+}
+
+/**
+ * 保存物品列表的用户自定义顺序。
+ * @param itemIds 当前物品 ID 展示顺序
+ * @param baseDirPath 可选的数据基础目录
+ */
+export async function saveItemOrder(itemIds: string[], baseDirPath?: string): Promise<void> {
+  await saveListOrder('items', itemIds, baseDirPath);
 }

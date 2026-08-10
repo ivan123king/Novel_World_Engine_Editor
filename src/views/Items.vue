@@ -5,7 +5,7 @@
  */
 import { onMounted } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
-import { useItemList } from '@/views/items/useItemList';
+import { useItemList, type ItemDropPlacement } from '@/views/items/useItemList';
 import type { JsonValue } from '@/types';
 
 const {
@@ -25,6 +25,9 @@ const {
   saveError,
   fileErrors,
   dataDirectory,
+  draggingItemId,
+  dragOverItemId,
+  itemDropPlacement,
   duplicateFieldKeys,
   hasDuplicateKeys,
   canSubmitForm,
@@ -41,6 +44,10 @@ const {
   submitForm,
   deleteItem,
   duplicateItem,
+  startItemDrag,
+  hoverItemDropTarget,
+  resetItemDrag,
+  dropItemOn,
 } = useItemList();
 
 /**
@@ -49,6 +56,21 @@ const {
  */
 function formatCustomFieldValue(value: JsonValue): string {
   return typeof value === 'string' ? value || '未填写' : JSON.stringify(value, null, 2);
+}
+
+/**
+ * 根据鼠标位于列表项上半区或下半区判断插入位置。
+ * @param event 拖拽事件
+ */
+function resolveItemDropPlacement(event: DragEvent): ItemDropPlacement {
+  const target = event.currentTarget;
+
+  if (!(target instanceof HTMLElement)) {
+    return 'before';
+  }
+
+  const targetRect = target.getBoundingClientRect();
+  return event.clientY > targetRect.top + targetRect.height / 2 ? 'after' : 'before';
 }
 
 /** 页面挂载后从本地 JSON 目录读取物品文件。 */
@@ -103,12 +125,27 @@ onMounted(() => {
             v-for="item in filteredItems"
             :key="item.id"
             class="item-list-row"
-            :class="{ 'is-active': selectedItem?.id === item.id }"
+            :class="{
+              'is-active': selectedItem?.id === item.id,
+              'is-dragging': draggingItemId === item.id,
+              'is-drop-target': dragOverItemId === item.id,
+              'is-drop-before': dragOverItemId === item.id && itemDropPlacement === 'before',
+              'is-drop-after': dragOverItemId === item.id && itemDropPlacement === 'after',
+            }"
             type="button"
+            :draggable="!isSaving && !isLoading"
+            @dragstart="startItemDrag(item.id)"
+            @dragenter="hoverItemDropTarget(item.id, resolveItemDropPlacement($event))"
+            @dragover.prevent="hoverItemDropTarget(item.id, resolveItemDropPlacement($event))"
+            @drop.prevent="dropItemOn(item.id, resolveItemDropPlacement($event))"
+            @dragend="resetItemDrag"
             @click="selectedItemId = item.id"
           >
-            <span class="item-list-name">{{ item.name }}</span>
-            <span class="item-list-meta">{{ Object.keys(item.customFields).length }} 个自定义属性</span>
+            <span class="item-drag-handle" aria-hidden="true">::</span>
+            <span class="item-list-content">
+              <span class="item-list-name">{{ item.name }}</span>
+              <span class="item-list-meta">{{ Object.keys(item.customFields).length }} 个自定义属性</span>
+            </span>
           </button>
 
           <n-empty v-if="isEmpty" description="暂无物品，点击右上角新建物品" />
@@ -342,7 +379,9 @@ onMounted(() => {
 /** 物品列表行按钮。 */
 .item-list-row {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   width: 100%;
   padding: 10px 11px;
   color: #24313d;
@@ -350,13 +389,47 @@ onMounted(() => {
   background: #f8fafc;
   border: 1px solid #dce4ee;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: grab;
 }
 
 .item-list-row:hover,
 .item-list-row.is-active {
   background: #eef6ff;
   border-color: #7aa7d9;
+}
+
+.item-list-row.is-dragging {
+  opacity: 0.52;
+}
+
+.item-list-row.is-drop-target {
+  background: #e5f1ff;
+  border-color: #2f80ed;
+}
+
+.item-list-row.is-drop-before {
+  box-shadow: inset 0 3px 0 #2f80ed;
+}
+
+.item-list-row.is-drop-after {
+  box-shadow: inset 0 -3px 0 #2f80ed;
+}
+
+/** 拖拽把手视觉区域。 */
+.item-drag-handle {
+  color: #8a98a8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+/** 物品列表条目文本内容。 */
+.item-list-content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 /** 物品列表名称。 */

@@ -5,7 +5,7 @@
  */
 import { computed, onMounted } from 'vue';
 import CharacterFormModal from '@/views/character/CharacterFormModal.vue';
-import { useCharacterList } from '@/views/character/useCharacterList';
+import { useCharacterList, type CharacterDropPlacement } from '@/views/character/useCharacterList';
 import { getCharacterCustomFieldEntries, type CharacterFile, type JsonValue } from '@/types';
 
 const {
@@ -22,6 +22,9 @@ const {
   fileErrors,
   dataDirectory,
   searchKeyword,
+  draggingCharacterId,
+  dragOverCharacterId,
+  characterDropPlacement,
   loadCharacters,
   openDetail,
   openCreate,
@@ -32,6 +35,10 @@ const {
   duplicateCharacter,
   createCharacter,
   updateCharacter,
+  startCharacterDrag,
+  hoverCharacterDropTarget,
+  resetCharacterDrag,
+  dropCharacterOn,
 } = useCharacterList();
 
 /** 当前选中人物的自定义属性条目。 */
@@ -73,6 +80,21 @@ function formatTraits(traits: string[]): string {
  */
 function formatCustomFieldValue(value: JsonValue): string {
   return typeof value === 'string' ? value || '未填写' : JSON.stringify(value, null, 2);
+}
+
+/**
+ * 根据鼠标位于列表项上半区或下半区判断插入位置。
+ * @param event 拖拽事件
+ */
+function resolveCharacterDropPlacement(event: DragEvent): CharacterDropPlacement {
+  const target = event.currentTarget;
+
+  if (!(target instanceof HTMLElement)) {
+    return 'before';
+  }
+
+  const targetRect = target.getBoundingClientRect();
+  return event.clientY > targetRect.top + targetRect.height / 2 ? 'after' : 'before';
 }
 
 /** 页面挂载后从本地 JSON 目录读取人物文件。 */
@@ -129,13 +151,28 @@ onMounted(() => {
             v-for="character in filteredCharacters"
             :key="character.id"
             class="character-list-item"
-            :class="{ 'is-active': selectedCharacter?.id === character.id }"
+            :class="{
+              'is-active': selectedCharacter?.id === character.id,
+              'is-dragging': draggingCharacterId === character.id,
+              'is-drop-target': dragOverCharacterId === character.id,
+              'is-drop-before': dragOverCharacterId === character.id && characterDropPlacement === 'before',
+              'is-drop-after': dragOverCharacterId === character.id && characterDropPlacement === 'after',
+            }"
             type="button"
+            :draggable="!isSaving && !isLoading"
+            @dragstart="startCharacterDrag(character.id)"
+            @dragenter="hoverCharacterDropTarget(character.id, resolveCharacterDropPlacement($event))"
+            @dragover.prevent="hoverCharacterDropTarget(character.id, resolveCharacterDropPlacement($event))"
+            @drop.prevent="dropCharacterOn(character.id, resolveCharacterDropPlacement($event))"
+            @dragend="resetCharacterDrag"
             @click="openDetail(character)"
           >
-            <span class="character-list-name">{{ character.name }}</span>
-            <span class="character-list-meta">
-              {{ formatAge(character.age) }} / {{ formatTraits(character.traits) }}
+            <span class="character-drag-handle" aria-hidden="true">::</span>
+            <span class="character-list-content">
+              <span class="character-list-name">{{ character.name }}</span>
+              <span class="character-list-meta">
+                {{ formatAge(character.age) }} / {{ formatTraits(character.traits) }}
+              </span>
             </span>
           </button>
 
@@ -320,7 +357,9 @@ onMounted(() => {
 /** 人物列表条目按钮。 */
 .character-list-item {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   width: 100%;
   padding: 10px 11px;
   color: #24313d;
@@ -328,13 +367,47 @@ onMounted(() => {
   background: #f8fafc;
   border: 1px solid #dce4ee;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: grab;
 }
 
 .character-list-item:hover,
 .character-list-item.is-active {
   background: #eef6ff;
   border-color: #7aa7d9;
+}
+
+.character-list-item.is-dragging {
+  opacity: 0.52;
+}
+
+.character-list-item.is-drop-target {
+  background: #e5f1ff;
+  border-color: #2f80ed;
+}
+
+.character-list-item.is-drop-before {
+  box-shadow: inset 0 3px 0 #2f80ed;
+}
+
+.character-list-item.is-drop-after {
+  box-shadow: inset 0 -3px 0 #2f80ed;
+}
+
+/** 拖拽把手视觉区域。 */
+.character-drag-handle {
+  color: #8a98a8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+/** 人物列表条目文本内容。 */
+.character-list-content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 /** 人物列表名称。 */

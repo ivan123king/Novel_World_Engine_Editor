@@ -45,9 +45,11 @@ declare global {
       listCharacters: (baseDirPath?: string) => Promise<CharacterListResult>;
       saveCharacter: (character: CharacterFile, baseDirPath?: string) => Promise<CharacterFile>;
       deleteCharacter: (characterId: string, baseDirPath?: string) => Promise<void>;
+      saveCharacterOrder: (characterIds: string[], baseDirPath?: string) => Promise<void>;
       listItems: (baseDirPath?: string) => Promise<ItemListResult>;
       saveItem: (item: ItemFile, baseDirPath?: string) => Promise<ItemFile>;
       deleteItem: (itemId: string, baseDirPath?: string) => Promise<void>;
+      saveItemOrder: (itemIds: string[], baseDirPath?: string) => Promise<void>;
       listMapModule: (baseDirPath?: string) => Promise<MapModuleResult>;
       saveLocation: (location: LocationFile, baseDirPath?: string) => Promise<LocationFile>;
       deleteLocation: (locationId: string, baseDirPath?: string) => Promise<void>;

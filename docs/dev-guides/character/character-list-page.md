@@ -11,6 +11,7 @@
 - 人物页显示在主工作台右侧页面容器内，不改顶部项目栏和左侧导航。
 - 页面主体使用左侧人物列表、右侧 Inspector。
 - 左侧列表展示人物名称、年龄、性格摘要，并支持搜索。
+- 左侧列表支持拖动排序，用于表达作者当前写作阶段的人物关注顺序。
 - 点击列表项时在右侧 Inspector 展示详情。
 - Inspector 提供编辑、复制、删除入口。
 - 删除不需要二次确认。
@@ -36,6 +37,8 @@
 
 人物数据通过 `src/api/characterApi.ts` 调用 preload IPC，最终由主进程写入 `data/characters/*.json`。
 
+人物列表顺序通过同一 renderer API 调用 preload IPC，最终由主进程写入 `data/list-orders/characters.json`。
+
 ## 开发指示
 
 - `Characters.vue` 文件顶部添加中文文件功能注释。
@@ -47,6 +50,8 @@
 - 编辑时必须保留原对象的 `id`、未知字段和 `schemaVersion`，并用动态 key/value 行更新 `customFields`。
 - 不要在 Vue 组件中直接访问文件系统。
 - 不要新增数据库或改变现有 JSON 格式。
+- 拖动人物列表项后立即保存排序文件；保存失败时回滚本次拖动顺序并展示错误。
+- 新建和复制人物追加到当前列表末尾；删除人物后同步移除排序文件中的对应 ID。
 
 ## 验证
 

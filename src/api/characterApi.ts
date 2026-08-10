@@ -52,3 +52,11 @@ export function deleteCharacter(
 ): Promise<void> {
   return getNovelEngineApi().deleteCharacter(characterId, baseDirPath);
 }
+
+/** 保存人物列表的用户自定义顺序。 */
+export function saveCharacterOrder(
+  characterIds: string[],
+  baseDirPath?: string,
+): Promise<void> {
+  return getNovelEngineApi().saveCharacterOrder([...characterIds], baseDirPath);
+}

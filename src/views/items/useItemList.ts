@@ -3,6 +3,7 @@ import {
   deleteItem as deleteItemFile,
   listItems as loadItemFiles,
   saveItem,
+  saveItemOrder,
 } from '@/api/itemApi';
 import {
   createEmptyItem,
@@ -29,6 +30,9 @@ export interface ItemFormValues {
   /** 自定义属性行。 */
   customFields: ItemCustomFieldRow[];
 }
+
+/** 列表拖放插入位置。 */
+export type ItemDropPlacement = 'before' | 'after';
 
 /** 自定义属性行 ID 计数器，保证同一页面会话内的行 key 稳定。 */
 let itemFieldRowSeed = 0;
@@ -185,6 +189,39 @@ function itemMatchesKeyword(item: ItemFile, keyword: string): boolean {
     .includes(normalizedKeyword);
 }
 
+/**
+ * 将指定实体移动到目标实体之前或之后。
+ * 搜索过滤状态下仍基于完整列表重排，未显示项保持原有相对顺序。
+ */
+function moveEntityNear<T extends { id: string }>(
+  entities: T[],
+  movedId: string,
+  targetId: string,
+  placement: ItemDropPlacement,
+): T[] {
+  if (movedId === targetId) {
+    return entities;
+  }
+
+  const sourceIndex = entities.findIndex((entity) => entity.id === movedId);
+  const targetExists = entities.some((entity) => entity.id === targetId);
+
+  if (sourceIndex < 0 || !targetExists) {
+    return entities;
+  }
+
+  const nextEntities = [...entities];
+  const [movedEntity] = nextEntities.splice(sourceIndex, 1);
+  const targetIndex = nextEntities.findIndex((entity) => entity.id === targetId);
+
+  if (targetIndex < 0) {
+    return entities;
+  }
+
+  nextEntities.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movedEntity);
+  return nextEntities;
+}
+
 /** 管理物品列表页的文件持久化状态和 UI 交互状态。 */
 export function useItemList() {
   const items = ref<ItemFile[]>([]);
@@ -199,6 +236,9 @@ export function useItemList() {
   const saveError = ref('');
   const fileErrors = ref<string[]>([]);
   const dataDirectory = ref('');
+  const draggingItemId = ref<string | null>(null);
+  const dragOverItemId = ref<string | null>(null);
+  const itemDropPlacement = ref<ItemDropPlacement>('before');
 
   const formValues = reactive<ItemFormValues>({
     name: '',
@@ -226,6 +266,11 @@ export function useItemList() {
   const hasErrorMessage = computed(() =>
     Boolean(loadError.value || saveError.value || fileErrors.value.length),
   );
+
+  /** 保存当前物品 ID 顺序到本地排序元数据文件。 */
+  async function persistItemOrder(nextItems: ItemFile[]): Promise<void> {
+    await saveItemOrder(nextItems.map((item) => item.id));
+  }
 
   /** 从本地 JSON 文件重新读取物品列表。 */
   async function loadItems(): Promise<void> {
@@ -337,9 +382,9 @@ export function useItemList() {
         items.value = [...items.value, savedItem];
       }
 
-      items.value = items.value.sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN'));
       selectedItemId.value = savedItem.id;
       closeForm();
+      await persistItemOrder(items.value);
     } catch (error) {
       saveError.value = formatError(error);
     } finally {
@@ -357,7 +402,9 @@ export function useItemList() {
 
     try {
       await deleteItemFile(itemId);
-      items.value = items.value.filter((item) => item.id !== itemId);
+      const nextItems = items.value.filter((item) => item.id !== itemId);
+
+      items.value = nextItems;
 
       if (selectedItemId.value === itemId) {
         selectedItemId.value = items.value[0]?.id ?? null;
@@ -366,6 +413,8 @@ export function useItemList() {
       if (editingItem.value?.id === itemId) {
         closeForm();
       }
+
+      await persistItemOrder(nextItems);
     } catch (error) {
       saveError.value = formatError(error);
     } finally {
@@ -390,12 +439,74 @@ export function useItemList() {
         schemaVersion: ITEM_SCHEMA_VERSION,
       };
       const savedItem = await saveItem(nextItem);
+      const nextItems = [...items.value, savedItem];
 
-      items.value = [...items.value, savedItem].sort((left, right) =>
-        left.name.localeCompare(right.name, 'zh-Hans-CN'),
-      );
+      items.value = nextItems;
       selectedItemId.value = savedItem.id;
+      await persistItemOrder(nextItems);
     } catch (error) {
+      saveError.value = formatError(error);
+    } finally {
+      isSaving.value = false;
+    }
+  }
+
+  /** 开始拖动物品列表项。 */
+  function startItemDrag(itemId: string): void {
+    if (isSaving.value || isLoading.value) {
+      return;
+    }
+
+    draggingItemId.value = itemId;
+    dragOverItemId.value = itemId;
+  }
+
+  /** 记录当前拖动悬停的物品，用于高亮潜在插入位置。 */
+  function hoverItemDropTarget(itemId: string, placement: ItemDropPlacement): void {
+    if (!draggingItemId.value || draggingItemId.value === itemId) {
+      dragOverItemId.value = null;
+      return;
+    }
+
+    dragOverItemId.value = itemId;
+    itemDropPlacement.value = placement;
+  }
+
+  /** 清理物品拖拽状态。 */
+  function resetItemDrag(): void {
+    draggingItemId.value = null;
+    dragOverItemId.value = null;
+    itemDropPlacement.value = 'before';
+  }
+
+  /**
+   * 完成物品拖放并立即写入排序文件。
+   * 保存失败时回滚本次视觉顺序，避免界面和 JSON 元数据不一致。
+   */
+  async function dropItemOn(targetItemId: string, placement: ItemDropPlacement): Promise<void> {
+    const movedItemId = draggingItemId.value;
+    resetItemDrag();
+
+    if (!movedItemId || movedItemId === targetItemId) {
+      return;
+    }
+
+    const previousItems = items.value;
+    const nextItems = moveEntityNear(previousItems, movedItemId, targetItemId, placement);
+
+    if (nextItems === previousItems) {
+      return;
+    }
+
+    isSaving.value = true;
+    saveError.value = '';
+    items.value = nextItems;
+    selectedItemId.value = movedItemId;
+
+    try {
+      await persistItemOrder(nextItems);
+    } catch (error) {
+      items.value = previousItems;
       saveError.value = formatError(error);
     } finally {
       isSaving.value = false;
@@ -420,6 +531,9 @@ export function useItemList() {
     saveError,
     fileErrors,
     dataDirectory,
+    draggingItemId,
+    dragOverItemId,
+    itemDropPlacement,
     duplicateFieldKeys,
     hasDuplicateKeys,
     canSubmitForm,
@@ -436,5 +550,9 @@ export function useItemList() {
     submitForm,
     deleteItem,
     duplicateItem,
+    startItemDrag,
+    hoverItemDropTarget,
+    resetItemDrag,
+    dropItemOn,
   };
 }

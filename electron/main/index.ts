@@ -3,11 +3,13 @@ import { join } from 'node:path';
 import {
   deleteCharacterFile,
   listCharacters,
+  saveCharacterOrder,
   saveCharacter,
 } from './characters/character-service';
 import {
   deleteItemFile,
   listItems,
+  saveItemOrder,
   saveItem,
 } from './items/item-service';
 import {
@@ -71,6 +73,10 @@ ipcMain.handle('characters:delete', (_event, characterId: string, baseDirPath?: 
   deleteCharacterFile(characterId, baseDirPath),
 );
 
+ipcMain.handle('characters:save-order', (_event, characterIds: string[], baseDirPath?: string) =>
+  saveCharacterOrder(characterIds, baseDirPath),
+);
+
 ipcMain.handle('items:list', (_event, baseDirPath?: string) => listItems(baseDirPath));
 
 ipcMain.handle('items:save', (_event, item, baseDirPath?: string) =>
@@ -79,6 +85,10 @@ ipcMain.handle('items:save', (_event, item, baseDirPath?: string) =>
 
 ipcMain.handle('items:delete', (_event, itemId: string, baseDirPath?: string) =>
   deleteItemFile(itemId, baseDirPath),
+);
+
+ipcMain.handle('items:save-order', (_event, itemIds: string[], baseDirPath?: string) =>
+  saveItemOrder(itemIds, baseDirPath),
 );
 
 ipcMain.handle('maps:list-module', (_event, baseDirPath?: string) => listMapModule(baseDirPath));

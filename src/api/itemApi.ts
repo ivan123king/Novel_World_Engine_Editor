@@ -46,3 +46,8 @@ export function saveItem(item: ItemFile, baseDirPath?: string): Promise<ItemFile
 export function deleteItem(itemId: string, baseDirPath?: string): Promise<void> {
   return getNovelEngineApi().deleteItem(itemId, baseDirPath);
 }
+
+/** 保存物品列表的用户自定义顺序。 */
+export function saveItemOrder(itemIds: string[], baseDirPath?: string): Promise<void> {
+  return getNovelEngineApi().saveItemOrder([...itemIds], baseDirPath);
+}
