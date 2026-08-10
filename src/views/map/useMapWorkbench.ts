@@ -12,6 +12,7 @@ import {
   type LocationCustomFields,
   type LocationFile,
   type MapFile,
+  type MapViewport,
   type MapPin,
 } from '@/types';
 
@@ -31,6 +32,14 @@ export interface KonvaPointerEvent {
     getStage?: () => {
       getPointerPosition: () => { x: number; y: number } | null;
     };
+  };
+}
+
+/** Konva 滚轮事件最小类型。 */
+export interface KonvaWheelEvent extends KonvaPointerEvent {
+  evt: {
+    deltaY: number;
+    preventDefault: () => void;
   };
 }
 
@@ -61,7 +70,19 @@ export const MAP_STAGE_SIZE = {
   height: 580,
 };
 
+/** 地图透明拖拽命中区尺寸。 */
+export const MAP_HIT_AREA = {
+  x: -5000,
+  y: -5000,
+  width: 10000,
+  height: 10000,
+};
+
 const pinColors = ['#2563eb', '#16a34a', '#9333ea', '#b45309', '#dc2626', '#0f766e'];
+const minViewportScale = 0.35;
+const maxViewportScale = 3;
+const wheelScaleStep = 1.08;
+const viewportSaveDelayMs = 5000;
 
 let fieldRowSeed = 0;
 
@@ -207,6 +228,7 @@ export function useMapWorkbench() {
   const saveError = ref('');
   const fileErrors = ref<string[]>([]);
   const dataDirectory = ref('');
+  let viewportSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   const locationForm = reactive<LocationFormValues>({
     name: '',
@@ -302,19 +324,6 @@ export function useMapWorkbench() {
         .includes(keyword);
     });
   });
-  const gridLines = computed(() => {
-    const lines: Array<{ id: string; points: number[] }> = [];
-
-    for (let x = 40; x < MAP_STAGE_SIZE.width; x += 80) {
-      lines.push({ id: `v-${x}`, points: [x, 0, x, MAP_STAGE_SIZE.height] });
-    }
-
-    for (let y = 40; y < MAP_STAGE_SIZE.height; y += 80) {
-      lines.push({ id: `h-${y}`, points: [0, y, MAP_STAGE_SIZE.width, y] });
-    }
-
-    return lines;
-  });
   const floatingToolbarStyle = computed(() => {
     if (!selectedPin.value) {
       return { display: 'none' };
@@ -389,6 +398,55 @@ export function useMapWorkbench() {
     }
   }
 
+  /**
+   * 更新当前地图视口并保存。
+   * @param viewport 下一个视口状态
+   * @param options 保存选项
+   */
+  async function updateCurrentMapViewport(
+    viewport: MapViewport,
+    options: { debounce?: boolean } = {},
+  ): Promise<void> {
+    if (!currentMap.value) {
+      return;
+    }
+
+    const nextMap: MapFile = {
+      ...currentMap.value,
+      viewport,
+    };
+
+    upsertMap(nextMap);
+
+    if (viewportSaveTimer) {
+      clearTimeout(viewportSaveTimer);
+      viewportSaveTimer = null;
+    }
+
+    const persistViewport = async (): Promise<void> => {
+      isSaving.value = true;
+      saveError.value = '';
+
+      try {
+        upsertMap(await saveMap(nextMap));
+      } catch (error) {
+        saveError.value = formatError(error);
+      } finally {
+        isSaving.value = false;
+      }
+    };
+
+    if (options.debounce) {
+      viewportSaveTimer = setTimeout(() => {
+        viewportSaveTimer = null;
+        void persistViewport();
+      }, viewportSaveDelayMs);
+      return;
+    }
+
+    await persistViewport();
+  }
+
   function openMap(mapId: string): void {
     const targetMap = maps.value.find((map) => map.id === mapId);
     if (!targetMap) {
@@ -455,25 +513,54 @@ export function useMapWorkbench() {
       return;
     }
 
-    const nextMap: MapFile = {
-      ...currentMap.value,
-      viewport: {
+    await updateCurrentMapViewport(
+      {
         ...currentMap.value.viewport,
         x: Math.round(event.target.x()),
         y: Math.round(event.target.y()),
       },
+      { debounce: true },
+    );
+  }
+
+  /**
+   * 处理鼠标滚轮缩放地图。
+   * 缩放以鼠标指针所在位置为中心，并将 viewport 保存到地图 JSON。
+   * @param event Konva 滚轮事件
+   */
+  async function handleStageWheel(event: KonvaWheelEvent): Promise<void> {
+    if (!currentMap.value || isPlacingLocation.value) {
+      return;
+    }
+
+    event.evt.preventDefault();
+
+    const pointerPosition = event.target?.getStage?.()?.getPointerPosition();
+    if (!pointerPosition) {
+      return;
+    }
+
+    const viewport = currentMap.value.viewport;
+    const oldScale = viewport.scale;
+    const nextScale =
+      event.evt.deltaY > 0 ? oldScale / wheelScaleStep : oldScale * wheelScaleStep;
+    const clampedScale = Math.min(maxViewportScale, Math.max(minViewportScale, nextScale));
+
+    if (clampedScale === oldScale) {
+      return;
+    }
+
+    const mapPointUnderPointer = {
+      x: (pointerPosition.x - viewport.x) / oldScale,
+      y: (pointerPosition.y - viewport.y) / oldScale,
+    };
+    const nextViewport: MapViewport = {
+      x: Math.round(pointerPosition.x - mapPointUnderPointer.x * clampedScale),
+      y: Math.round(pointerPosition.y - mapPointUnderPointer.y * clampedScale),
+      scale: Number(clampedScale.toFixed(3)),
     };
 
-    isSaving.value = true;
-    saveError.value = '';
-
-    try {
-      upsertMap(await saveMap(nextMap));
-    } catch (error) {
-      saveError.value = formatError(error);
-    } finally {
-      isSaving.value = false;
-    }
+    await updateCurrentMapViewport(nextViewport, { debounce: true });
   }
 
   async function handlePinDragEnd(pinId: string, event: KonvaDragEvent): Promise<void> {
@@ -761,7 +848,6 @@ export function useMapWorkbench() {
     breadcrumbs,
     childMaps,
     filteredCurrentPins,
-    gridLines,
     floatingToolbarStyle,
     duplicateFieldKeys,
     canSaveLocationForm,
@@ -774,6 +860,7 @@ export function useMapWorkbench() {
     handlePinClick,
     beginPlaceLocation,
     handleStageClick,
+    handleStageWheel,
     handleSceneDragEnd,
     handlePinDragEnd,
     startEdit,

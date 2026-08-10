@@ -1,0 +1,10 @@
+{
+  "id": "location_msn0eh57_2k3t1h",
+  "name": "扬州",
+  "type": "地点",
+  "parentLocationId": "location_world",
+  "description": "",
+  "customFields": {},
+  "schemaVersion": 1,
+  "customFieldOrder": []
+}

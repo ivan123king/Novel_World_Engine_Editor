@@ -6,17 +6,26 @@
   "parentLocationId": null,
   "background": null,
   "viewport": {
-    "x": -154,
-    "y": -91,
-    "scale": 1
+    "x": 93,
+    "y": 226,
+    "scale": 0.599
   },
   "pins": [
     {
       "id": "pin_msmzehw5_0pgu4d",
       "locationId": "location_msmzehw5_yky7te",
-      "x": 311,
-      "y": 349,
+      "x": 147,
+      "y": 261,
       "color": "#2563eb",
+      "icon": "location",
+      "showLabel": true
+    },
+    {
+      "id": "pin_msn0eh57_tkw6f2",
+      "locationId": "location_msn0eh57_2k3t1h",
+      "x": 547,
+      "y": 19,
+      "color": "#16a34a",
       "icon": "location",
       "showLabel": true
     }

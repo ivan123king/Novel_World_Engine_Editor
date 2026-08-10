@@ -5,7 +5,13 @@
  */
 import type { CSSProperties } from 'vue';
 import type { LocationFile, MapFile, MapPin, MapViewport } from '@/types';
-import { MAP_STAGE_SIZE, type KonvaDragEvent, type KonvaPointerEvent } from './useMapWorkbench';
+import {
+  MAP_HIT_AREA,
+  MAP_STAGE_SIZE,
+  type KonvaDragEvent,
+  type KonvaPointerEvent,
+  type KonvaWheelEvent,
+} from './useMapWorkbench';
 
 defineProps<{
   /** 当前地图。 */
@@ -20,8 +26,6 @@ defineProps<{
   selectedPinId: string;
   /** 当前地图 viewport。 */
   viewport: MapViewport;
-  /** 背景网格线。 */
-  gridLines: Array<{ id: string; points: number[] }>;
   /** 浮动工具条位置。 */
   floatingToolbarStyle: CSSProperties;
   /** 是否正在新增地点。 */
@@ -49,6 +53,8 @@ const emit = defineEmits<{
   openMap: [mapId: string];
   /** 点击画布。 */
   stageClick: [event: KonvaPointerEvent];
+  /** 滚轮缩放画布。 */
+  stageWheel: [event: KonvaWheelEvent];
   /** 拖拽画布场景结束。 */
   sceneDragEnd: [event: KonvaDragEvent];
   /** 选中 pin。 */
@@ -114,7 +120,11 @@ const stageConfig = {
         <button v-else type="button" @click="emit('createChildMap')">子地图</button>
       </div>
 
-      <v-stage :config="stageConfig" @click="emit('stageClick', $event)">
+      <v-stage
+        :config="stageConfig"
+        @click="emit('stageClick', $event)"
+        @wheel="emit('stageWheel', $event)"
+      >
         <v-layer>
           <v-group
             :config="{
@@ -128,37 +138,11 @@ const stageConfig = {
           >
             <v-rect
               :config="{
-                x: 0,
-                y: 0,
-                width: MAP_STAGE_SIZE.width,
-                height: MAP_STAGE_SIZE.height,
-                fill: isPlacingLocation ? '#f0fdf4' : '#f8fafc',
-              }"
-            />
-            <v-line
-              v-for="line in gridLines"
-              :key="line.id"
-              :config="{
-                points: line.points,
-                stroke: '#e2e8f0',
-                strokeWidth: 1,
-              }"
-            />
-            <v-line
-              :config="{
-                points: [120, 420, 260, 365, 395, 338, 590, 348, 740, 300],
-                stroke: '#94a3b8',
-                strokeWidth: 3,
-                dash: [10, 8],
-                tension: 0.35,
-              }"
-            />
-            <v-line
-              :config="{
-                points: [270, 80, 360, 340, 510, 150, 635, 96],
-                stroke: '#cbd5e1',
-                strokeWidth: 2,
-                tension: 0.45,
+                x: MAP_HIT_AREA.x,
+                y: MAP_HIT_AREA.y,
+                width: MAP_HIT_AREA.width,
+                height: MAP_HIT_AREA.height,
+                fill: 'rgba(255,255,255,0.01)',
               }"
             />
 
