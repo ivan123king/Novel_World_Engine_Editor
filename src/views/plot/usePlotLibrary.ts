@@ -37,6 +37,9 @@ export interface PlotContextTarget {
   descriptionId?: string;
 }
 
+/** 剧情块拖放插入位置。 */
+export type PlotDropPlacement = 'before' | 'after';
+
 /** 生成页面会话内的剧情 ID。 */
 function createPlotId(): string {
   return `plot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -139,6 +142,50 @@ function normalizeSiblingOrder(plots: PlotFile[], parentId: string | null): Plot
   });
 }
 
+/**
+ * 将同一父剧情下的剧情块移动到目标剧情块前后。
+ * 不跨父节点调整层级，避免拖拽排序意外改变剧情结构。
+ */
+function moveSiblingPlotNear(
+  plots: PlotFile[],
+  movedPlotId: string,
+  targetPlotId: string,
+  placement: PlotDropPlacement,
+): PlotFile[] {
+  if (movedPlotId === targetPlotId) {
+    return plots;
+  }
+
+  const movedPlot = plots.find((plot) => plot.id === movedPlotId);
+  const targetPlot = plots.find((plot) => plot.id === targetPlotId);
+
+  if (!movedPlot || !targetPlot || movedPlot.parentId !== targetPlot.parentId) {
+    return plots;
+  }
+
+  const orderedSiblingIds = plots
+    .filter((plot) => plot.parentId === movedPlot.parentId)
+    .sort(sortPlotsByOrder)
+    .map((plot) => plot.id)
+    .filter((plotId) => plotId !== movedPlotId);
+  const targetIndex = orderedSiblingIds.indexOf(targetPlotId);
+
+  if (targetIndex < 0) {
+    return plots;
+  }
+
+  orderedSiblingIds.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movedPlotId);
+
+  return plots.map((plot) => {
+    if (plot.parentId !== movedPlot.parentId) {
+      return plot;
+    }
+
+    const order = orderedSiblingIds.indexOf(plot.id);
+    return order >= 0 ? { ...plot, order } : plot;
+  });
+}
+
 /** 为说明卡片重写连续排序。 */
 function normalizeDescriptionOrder(descriptions: PlotDescriptionBlock[]): PlotDescriptionBlock[] {
   return descriptions
@@ -164,6 +211,9 @@ export function usePlotLibrary() {
   const dataDirectory = ref('');
   const isLoading = ref(false);
   const isSaving = ref(false);
+  const draggingPlotId = ref<string | null>(null);
+  const dragOverPlotId = ref<string | null>(null);
+  const plotDropPlacement = ref<PlotDropPlacement>('before');
   const draggingDescriptionId = ref<string | null>(null);
   const dragOverDescriptionId = ref<string | null>(null);
   const plotSaveQueues = new Map<string, Promise<PlotFile | null>>();
@@ -303,7 +353,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
-    saveMessage.value = '已创建一级剧情块。';
+    // saveMessage.value = '已创建一级剧情块。';
   }
 
   /** 给指定剧情块创建直接子剧情并保存到 `plots/*.json`。 */
@@ -323,7 +373,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
-    saveMessage.value = '已创建子剧情。';
+    // saveMessage.value = '已创建子剧情。';
   }
 
   /** 给指定剧情块创建同级剧情并保存到 `plots/*.json`。 */
@@ -344,7 +394,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
-    saveMessage.value = '已创建同级剧情。';
+    // saveMessage.value = '已创建同级剧情。';
   }
 
   /** 删除指定剧情块及其全部后代，并删除对应 JSON 文件。 */
@@ -412,7 +462,7 @@ export function usePlotLibrary() {
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
     currentPlotId.value = savedPlot.id;
-    saveMessage.value = '已新增说明卡片。';
+    // saveMessage.value = '已新增说明卡片。';
   }
 
   /** 更新当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
@@ -475,7 +525,7 @@ export function usePlotLibrary() {
     }
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
-    saveMessage.value = '已删除说明卡片。';
+    // saveMessage.value = '已删除说明卡片。';
   }
 
   /** 上下移动当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
@@ -572,7 +622,88 @@ export function usePlotLibrary() {
     }
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
-    saveMessage.value = '已调整说明卡片顺序。';
+    // saveMessage.value = '已调整说明卡片顺序。';
+  }
+
+  /** 开始拖动剧情块。 */
+  function startPlotDrag(plotId: string): void {
+    if (isSaving.value || isLoading.value) {
+      return;
+    }
+
+    draggingPlotId.value = plotId;
+    dragOverPlotId.value = plotId;
+    plotDropPlacement.value = 'before';
+  }
+
+  /** 记录当前拖动悬停的剧情块，用于高亮潜在插入位置。 */
+  function hoverPlotDropTarget(plotId: string, placement: PlotDropPlacement): void {
+    if (!draggingPlotId.value || draggingPlotId.value === plotId) {
+      dragOverPlotId.value = null;
+      return;
+    }
+
+    const movedPlot = plots.value.find((plot) => plot.id === draggingPlotId.value);
+    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+
+    if (!movedPlot || !targetPlot || movedPlot.parentId !== targetPlot.parentId) {
+      dragOverPlotId.value = null;
+      return;
+    }
+
+    dragOverPlotId.value = plotId;
+    plotDropPlacement.value = placement;
+  }
+
+  /** 清理剧情块拖拽状态。 */
+  function resetPlotDrag(): void {
+    draggingPlotId.value = null;
+    dragOverPlotId.value = null;
+    plotDropPlacement.value = 'before';
+  }
+
+  /**
+   * 完成剧情块拖放并保存同级剧情块 order。
+   * 保存失败时回滚本次视觉顺序，避免界面和 JSON 文件不一致。
+   */
+  async function dropPlotOn(targetPlotId: string, placement: PlotDropPlacement): Promise<void> {
+    const movedPlotId = draggingPlotId.value;
+    resetPlotDrag();
+
+    if (!movedPlotId || movedPlotId === targetPlotId) {
+      return;
+    }
+
+    const previousPlots = plots.value;
+    const nextPlots = moveSiblingPlotNear(previousPlots, movedPlotId, targetPlotId, placement);
+
+    if (nextPlots === previousPlots) {
+      return;
+    }
+
+    const changedPlots = nextPlots.filter((nextPlot) => {
+      const previousPlot = previousPlots.find((plot) => plot.id === nextPlot.id);
+      return previousPlot ? previousPlot.order !== nextPlot.order : false;
+    });
+
+    plots.value = nextPlots;
+    currentPlotId.value = movedPlotId;
+    isSaving.value = true;
+    saveMessage.value = '';
+    errorMessage.value = '';
+
+    try {
+      const savedPlots = await Promise.all(changedPlots.map((plot) => persistPlot(plot)));
+
+      if (savedPlots.some((plot) => plot === null)) {
+        throw new Error(errorMessage.value || '剧情块排序保存失败');
+      }
+    } catch (error) {
+      plots.value = previousPlots;
+      errorMessage.value = formatError(error);
+    } finally {
+      isSaving.value = plotSaveQueues.size > 0;
+    }
   }
 
   /** 执行前端模拟右键菜单动作。 */
@@ -646,6 +777,9 @@ export function usePlotLibrary() {
     dataDirectory,
     isLoading,
     isSaving,
+    draggingPlotId,
+    dragOverPlotId,
+    plotDropPlacement,
     draggingDescriptionId,
     dragOverDescriptionId,
     hasRootPlots,
@@ -663,6 +797,10 @@ export function usePlotLibrary() {
     updateDescriptionBlock,
     deleteDescriptionBlock,
     moveDescriptionBlock,
+    startPlotDrag,
+    hoverPlotDropTarget,
+    resetPlotDrag,
+    dropPlotOn,
     startDescriptionDrag,
     hoverDescriptionDropTarget,
     resetDescriptionDrag,

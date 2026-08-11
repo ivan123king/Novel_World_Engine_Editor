@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, reactive } from 'vue';
 import type {
   PlotContextMenuAction,
   PlotContextTarget,
+  PlotDropPlacement,
 } from '@/views/plot/usePlotLibrary';
 import { usePlotLibrary } from '@/views/plot/usePlotLibrary';
 
@@ -22,6 +23,9 @@ const {
   fileErrors,
   isLoading,
   isSaving,
+  draggingPlotId,
+  dragOverPlotId,
+  plotDropPlacement,
   draggingDescriptionId,
   dragOverDescriptionId,
   hasRootPlots,
@@ -37,6 +41,10 @@ const {
   createDescriptionBlock,
   updateDescriptionBlock,
   deleteDescriptionBlock,
+  startPlotDrag,
+  hoverPlotDropTarget,
+  resetPlotDrag,
+  dropPlotOn,
   startDescriptionDrag,
   hoverDescriptionDropTarget,
   resetDescriptionDrag,
@@ -125,6 +133,21 @@ function handleContextMenuSelect(key: string | number): void {
   contextMenu.show = false;
 }
 
+/**
+ * 根据鼠标在剧情块卡片中的纵向位置判断插入前后。
+ * @param event 拖拽事件
+ */
+function resolvePlotDropPlacement(event: DragEvent): PlotDropPlacement {
+  const target = event.currentTarget;
+
+  if (!(target instanceof HTMLElement)) {
+    return 'before';
+  }
+
+  const targetRect = target.getBoundingClientRect();
+  return event.clientY > targetRect.top + targetRect.height / 2 ? 'after' : 'before';
+}
+
 /** 页面挂载后从当前小说项目目录读取剧情块文件。 */
 onMounted(() => {
   void loadPlots();
@@ -149,9 +172,6 @@ onMounted(() => {
     <header class="plot-toolbar">
       <div class="plot-title-group">
         <h2 class="plot-title">剧情库</h2>
-        <n-text depth="3" class="plot-subtitle">
-          数据保存到当前小说项目的 plots 目录。
-        </n-text>
       </div>
 
       <n-space align="center" size="small">
@@ -180,7 +200,7 @@ onMounted(() => {
 
     <!-- 顶部面包屑：表达当前剧情层级路径。 -->
     <nav class="plot-breadcrumb" aria-label="剧情层级导航">
-      <n-text depth="3">剧情导航</n-text>
+      <n-text depth="3">当前剧情</n-text>
       <div class="breadcrumb-path">
         <template v-if="breadcrumbPlots.length > 0">
           <template v-for="(plot, index) in breadcrumbPlots" :key="plot.id">
@@ -198,7 +218,7 @@ onMounted(() => {
       <!-- 左侧一级剧情块列表。 -->
       <aside class="plot-root-panel" aria-label="一级剧情块列表">
         <div class="panel-heading">
-          <n-text strong>一级剧情块</n-text>
+          <n-text strong>剧情块</n-text>
         </div>
 
         <div class="root-block-list">
@@ -206,10 +226,22 @@ onMounted(() => {
             v-for="plot in rootPlots"
             :key="plot.id"
             class="root-block"
-            :class="{ 'is-active': breadcrumbPlots[0]?.id === plot.id }"
+            :class="{
+              'is-active': breadcrumbPlots[0]?.id === plot.id,
+              'is-dragging': draggingPlotId === plot.id,
+              'is-drop-target': dragOverPlotId === plot.id,
+              'is-drop-before': dragOverPlotId === plot.id && plotDropPlacement === 'before',
+              'is-drop-after': dragOverPlotId === plot.id && plotDropPlacement === 'after',
+            }"
             type="button"
             :disabled="isSaving"
+            :draggable="!isSaving && !isLoading"
             @click="openPlot(plot.id)"
+            @dragstart="startPlotDrag(plot.id)"
+            @dragenter="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
+            @dragover.prevent="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
+            @drop.prevent="dropPlotOn(plot.id, resolvePlotDropPlacement($event))"
+            @dragend="resetPlotDrag"
             @contextmenu="openContextMenu($event, { targetType: 'rootPlot', plotId: plot.id })"
           >
             <span class="root-block-title">{{ plot.title || '未命名剧情' }}</span>
@@ -229,7 +261,7 @@ onMounted(() => {
       >
         <aside class="child-node-panel" aria-label="直接子节点区域">
           <div class="panel-heading">
-            <n-text strong>直接子节点</n-text>
+            <n-text strong>子剧情块</n-text>
           </div>
 
           <div class="child-node-list">
@@ -237,9 +269,21 @@ onMounted(() => {
               v-for="plot in childPlots"
               :key="plot.id"
               class="child-node"
+              :class="{
+                'is-dragging': draggingPlotId === plot.id,
+                'is-drop-target': dragOverPlotId === plot.id,
+                'is-drop-before': dragOverPlotId === plot.id && plotDropPlacement === 'before',
+                'is-drop-after': dragOverPlotId === plot.id && plotDropPlacement === 'after',
+              }"
               type="button"
               :disabled="isSaving"
+              :draggable="!isSaving && !isLoading"
               @click="openPlot(plot.id)"
+              @dragstart="startPlotDrag(plot.id)"
+              @dragenter="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
+              @dragover.prevent="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
+              @drop.prevent="dropPlotOn(plot.id, resolvePlotDropPlacement($event))"
+              @dragend="resetPlotDrag"
               @contextmenu="openContextMenu($event, { targetType: 'childPlot', plotId: plot.id })"
             >
               <span class="child-node-title">{{ plot.title || '未命名剧情' }}</span>
@@ -511,6 +555,27 @@ onMounted(() => {
 .child-node:hover {
   background: #eef6ff;
   border-color: #7aa7d9;
+}
+
+.root-block.is-dragging,
+.child-node.is-dragging {
+  opacity: 0.52;
+}
+
+.root-block.is-drop-target,
+.child-node.is-drop-target {
+  background: #e5f1ff;
+  border-color: #2f80ed;
+}
+
+.root-block.is-drop-before,
+.child-node.is-drop-before {
+  box-shadow: inset 0 3px 0 #2f80ed;
+}
+
+.root-block.is-drop-after,
+.child-node.is-drop-after {
+  box-shadow: inset 0 -3px 0 #2f80ed;
 }
 
 /** 一级剧情块标题。 */
