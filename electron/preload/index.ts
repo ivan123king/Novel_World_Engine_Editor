@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CharacterFile, ItemFile, LocationFile, MapFile } from '../../src/types';
+import type { IpcRendererEvent } from 'electron';
+import type { CharacterFile, CurrentProject, ItemFile, LocationFile, MapFile } from '../../src/types';
 
 /**
  * Electron preload 安全桥接。
@@ -7,6 +8,23 @@ import type { CharacterFile, ItemFile, LocationFile, MapFile } from '../../src/t
  */
 contextBridge.exposeInMainWorld('novelEngine', {
   getAppInfo: () => ipcRenderer.invoke('app:get-info'),
+
+  //项目模块
+  getCurrentProject: () => ipcRenderer.invoke('projects:get-current'),
+  restoreLastOpenedProject: () => ipcRenderer.invoke('projects:restore-last-opened'),
+  createProject: () => ipcRenderer.invoke('projects:create'),
+  openProject: () => ipcRenderer.invoke('projects:open'),
+  onCurrentProjectChanged: (listener: (project: CurrentProject | null) => void) => {
+    const channelListener = (_event: IpcRendererEvent, project: CurrentProject | null) => {
+      listener(project);
+    };
+
+    ipcRenderer.on('projects:current-changed', channelListener);
+
+    return () => {
+      ipcRenderer.removeListener('projects:current-changed', channelListener);
+    };
+  },
 
   //人物模块
   listCharacters: (baseDirPath?: string) => ipcRenderer.invoke('characters:list', baseDirPath),

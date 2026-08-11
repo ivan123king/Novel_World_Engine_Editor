@@ -37,3 +37,10 @@ export {
   type MapPin,
   type MapViewport,
 } from './map';
+export {
+  NOVEL_PROJECT_SCHEMA_VERSION,
+  createNovelProjectFile,
+  isNovelProjectFile,
+  type CurrentProject,
+  type NovelProjectFile,
+} from './project';

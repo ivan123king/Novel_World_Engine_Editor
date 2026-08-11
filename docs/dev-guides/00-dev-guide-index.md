@@ -19,6 +19,7 @@
 
 - `common/common-components.md`：公共组件指南。新增或修改弹框、按钮、通用输入、空状态等跨模块组件前阅读。
 - `json-file-store.md`：本地 JSON 文件工具设计。修改 Electron main process 文件读写、目录解析、JSON 保存/读取、路径边界校验时阅读。
+- `project/project-directory-menu.md`：小说项目目录与 Electron 菜单设计。修改“小说 / 新建 / 打开”菜单、`novel.json` 项目入口、项目目录选择或当前项目状态流转前阅读。
 - `list-order.md`：列表排序元数据设计。为人物、物品或后续资源列表新增拖动排序、保存展示顺序或恢复排序文件时阅读。
 - `main-workbench-layout.md`：主工作台整体页面结构。修改顶部项目栏、左侧模块导航、右侧页面容器、路由入口或 `mock_data/` 规则时阅读。
 - `character/character-list-page.md`：人物列表页设计。修改人物卡片列表、新建弹框、详情弹框、编辑入口或人物 mock 数据展示时阅读。

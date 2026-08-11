@@ -8,7 +8,7 @@
  */
 import { computed, onMounted, ref, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import mockNovel from '../mock_data/novel.json';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface AppInfo {
   name: string;
@@ -31,6 +31,8 @@ const appInfo = ref<AppInfo>({
 /** Vue Router 实例。 */
 const route = useRoute();
 const router = useRouter();
+const projectStore = useProjectStore();
+const { currentProjectTitle, currentProjectPath } = projectStore;
 
 /**
  * 主导航菜单配置。
@@ -77,6 +79,12 @@ onMounted(async () => {
   } catch {
     // Electron preload 未就绪时使用默认值
   }
+
+  try {
+    await projectStore.initializeProjectStore();
+  } catch {
+    // 项目状态初始化失败时维持未打开项目状态
+  }
 });
 </script>
 
@@ -92,8 +100,11 @@ onMounted(async () => {
             {{ appInfo.name }}
           </n-text>
           <h1 style="margin: 0; font-size: 24px; font-weight: 700; line-height: 1.2; color: #17212b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-            {{ mockNovel.title }}
+            {{ currentProjectTitle }}
           </h1>
+          <n-text depth="3" style="font-size: 12px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+            {{ currentProjectPath || '通过“小说 > 新建”或“小说 > 打开”选择项目目录' }}
+          </n-text>
         </div>
        
       </div>

@@ -55,15 +55,9 @@ loadJsonFileAs<T>(
 
 JSON 文件工具必须围绕一个基础目录路径工作。调用方可以传入用户指定的基础目录路径，后续人物、物品、地点、事件等文件都必须创建在这个基础目录下。
 
-如果调用方没有传入基础目录路径，则使用项目默认的 `data` 目录：
+正式小说项目功能接入后，人物、物品、地点、事件等领域数据不允许在调用方缺少基础目录路径时继续写入系统 `data` 目录。`data` 目录只保存应用系统文件，例如上一次打开的项目目录和后续全局设置。
 
-```text
-data/
-  characters/
-  items/
-  locations/
-  events/
-```
+因此，业务模块保存或读取小说数据时必须传入当前小说项目目录。未打开项目时，业务模块应返回明确错误或让 renderer 进入空项目状态，而不是静默创建 `data/characters`、`data/items` 等目录。
 
 基础目录相关规则：
 
@@ -71,7 +65,7 @@ data/
 - `ensureBaseDirectory(baseDirPath)` 负责创建基础目录，并返回最终使用的绝对路径。
 - `resolvePathInBaseDirectory(baseDirPath, ...segments)` 负责把后续相对路径拼到基础目录下。
 - 后续模块只传入相对路径片段，例如 `characters/char_linchen.json`，不要自行绕过基础目录写入任意位置。
-- 第一版只处理路径解析和目录创建，不做项目注册、最近打开列表或多项目管理。
+- 第一版只处理路径解析和目录创建，不做复杂项目注册或多项目管理；上一次打开的项目目录由 `project/project-directory-menu.md` 中定义的系统配置负责。
 ## 职责边界
 
 JSON 文件工具只负责通用文件能力：
@@ -122,7 +116,7 @@ JSON 文件工具不负责：
 
 ## 目录分类示例
 
-小说项目中的数据应按类型分目录保存：
+小说项目中的数据应按类型分目录保存。这里的 `base-directory` 必须是用户选择并通过 `novel.json` 校验的小说项目目录：
 
 ```text
 base-directory/

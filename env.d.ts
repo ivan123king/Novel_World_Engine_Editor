@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { CharacterFile, ItemFile, LocationFile, MapFile } from './src/types';
+import type { CharacterFile, CurrentProject, ItemFile, LocationFile, MapFile } from './src/types';
 
 declare global {
   /** 人物列表读取结果，和 preload 暴露的数据结构保持一致。 */
@@ -42,6 +42,13 @@ declare global {
         version: string;
         storage: string;
       }>;
+      getCurrentProject: () => Promise<CurrentProject | null>;
+      restoreLastOpenedProject: () => Promise<CurrentProject | null>;
+      createProject: () => Promise<CurrentProject | null>;
+      openProject: () => Promise<CurrentProject | null>;
+      onCurrentProjectChanged: (
+        listener: (project: CurrentProject | null) => void,
+      ) => () => void;
       listCharacters: (baseDirPath?: string) => Promise<CharacterListResult>;
       saveCharacter: (character: CharacterFile, baseDirPath?: string) => Promise<CharacterFile>;
       deleteCharacter: (characterId: string, baseDirPath?: string) => Promise<void>;
