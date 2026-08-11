@@ -45,6 +45,15 @@ export {
   type NovelProjectFile,
 } from './project';
 export {
+  PLOT_SCHEMA_VERSION,
+  createEmptyPlot,
+  createEmptyPlotDescriptionBlock,
+  isPlotDescriptionBlock,
+  isPlotFile,
+  type PlotDescriptionBlock,
+  type PlotFile,
+} from './plot';
+export {
   RELATION_GRAPH_SCHEMA_VERSION,
   createRelationGraphBlockOrderFile,
   createRelationGraphOrderFile,

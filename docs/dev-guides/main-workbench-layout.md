@@ -68,7 +68,7 @@ src/
     Items.vue
     Locations.vue
     Relations.vue
-    Events.vue
+    Plots.vue
     Timeline.vue
     ContextExport.vue
 ```
@@ -117,6 +117,7 @@ mock_data/
   items.json
   locations.json
   relations.json
+  plots.json
   events.json
   timeline.json
 ```

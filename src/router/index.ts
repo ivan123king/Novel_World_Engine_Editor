@@ -1,9 +1,9 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router';
 import Characters from '@/views/Characters.vue';
 import ContextExport from '@/views/ContextExport.vue';
-import Events from '@/views/Events.vue';
 import Items from '@/views/Items.vue';
 import Locations from '@/views/Locations.vue';
+import Plots from '@/views/Plots.vue';
 import ProjectHome from '@/views/ProjectHome.vue';
 import Relations from '@/views/Relations.vue';
 import Timeline from '@/views/Timeline.vue';
@@ -41,10 +41,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '关系' },
   },
   {
-    path: '/events',
-    name: 'events',
-    component: Events,
-    meta: { title: '剧情' },
+    path: '/plots',
+    name: 'plots',
+    component: Plots,
+    meta: { title: '剧情库' },
   },
   {
     path: '/timeline',

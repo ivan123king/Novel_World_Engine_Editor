@@ -13,6 +13,11 @@ import {
   saveItem,
 } from './items/item-service';
 import {
+  deletePlotFile,
+  listPlots,
+  savePlot,
+} from './plots/plot-service';
+import {
   deleteLocationFile,
   deleteMapFile,
   listMapModule,
@@ -165,6 +170,18 @@ ipcMain.handle('items:delete', (_event, itemId: string, baseDirPath?: string) =>
 
 ipcMain.handle('items:save-order', (_event, itemIds: string[], baseDirPath?: string) =>
   saveItemOrder(itemIds, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('plots:list', (_event, baseDirPath?: string) =>
+  listPlots(resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('plots:save', (_event, plot, baseDirPath?: string) =>
+  savePlot(plot, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('plots:delete', (_event, plotId: string, baseDirPath?: string) =>
+  deletePlotFile(plotId, resolveCurrentProjectDirectory(baseDirPath)),
 );
 
 ipcMain.handle('maps:list-module', (_event, baseDirPath?: string) =>

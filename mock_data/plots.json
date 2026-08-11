@@ -1,0 +1,116 @@
+[
+  {
+    "id": "plot_qixuanmen",
+    "title": "七玄门",
+    "summary": "家境贫穷的主角参加考核进入七玄门，拜师墨老，被迫修炼长春功，最终与墨老决裂。",
+    "parentId": null,
+    "order": 0,
+    "descriptionBlocks": [
+      {
+        "id": "desc_qixuanmen_overview",
+        "title": "阶段作用",
+        "content": "七玄门阶段用于承载主角早期成长、墨老伏笔、药园经历和离开门派的关键转折。",
+        "order": 0
+      },
+      {
+        "id": "desc_qixuanmen_conflict",
+        "title": "核心冲突",
+        "content": "主角想在门派中获得生存机会，但墨老的真实目的不断压迫他做出选择。",
+        "order": 1
+      }
+    ],
+    "schemaVersion": 1
+  },
+  {
+    "id": "plot_entry_exam",
+    "title": "进入七玄门",
+    "summary": "主角参加入门考核，第一次接触门派规则。",
+    "parentId": "plot_qixuanmen",
+    "order": 0,
+    "descriptionBlocks": [
+      {
+        "id": "desc_entry_exam_scene",
+        "title": "考核场景",
+        "content": "通过考核环境、其他孩子的反应和门派执事的态度，表现主角初入江湖时的局促。",
+        "order": 0
+      }
+    ],
+    "schemaVersion": 1
+  },
+  {
+    "id": "plot_molao",
+    "title": "墨老",
+    "summary": "墨老收主角为徒，并逐步显露出异常目的。",
+    "parentId": "plot_qixuanmen",
+    "order": 1,
+    "descriptionBlocks": [
+      {
+        "id": "desc_molao_surface",
+        "title": "表面师徒关系",
+        "content": "墨老以授功和药园管理为名控制主角，让主角误以为这是难得的修炼机会。",
+        "order": 0
+      },
+      {
+        "id": "desc_molao_goal",
+        "title": "墨老隐藏目的",
+        "content": "墨老真实关注的是长春功进展，以及主角身体是否适合后续计划。",
+        "order": 1
+      }
+    ],
+    "schemaVersion": 1
+  },
+  {
+    "id": "plot_molao_strange",
+    "title": "墨老的古怪",
+    "summary": "墨老强迫修炼长春功，药园和失踪轨迹都留下疑点。",
+    "parentId": "plot_molao",
+    "order": 0,
+    "descriptionBlocks": [
+      {
+        "id": "desc_molao_strange_hint",
+        "title": "异常线索",
+        "content": "可以继续拆出长春功、锻体功法、药园异常和墨老隐藏目的。",
+        "order": 0
+      }
+    ],
+    "schemaVersion": 1
+  },
+  {
+    "id": "plot_molao_missing",
+    "title": "墨老失踪",
+    "summary": "墨老突然离开药园，主角发现异常。",
+    "parentId": "plot_molao",
+    "order": 1,
+    "descriptionBlocks": [
+      {
+        "id": "desc_molao_missing_scene",
+        "title": "夜晚药园",
+        "content": "晚上药园环境描写。墨老脸色异常。主角发现墨老隐藏秘密。",
+        "order": 0
+      },
+      {
+        "id": "desc_molao_missing_foreshadow",
+        "title": "后续伏笔",
+        "content": "可能作为后续决裂的提前铺垫。",
+        "order": 1
+      }
+    ],
+    "schemaVersion": 1
+  },
+  {
+    "id": "plot_worldview",
+    "title": "世界观",
+    "summary": "存放暂未归入具体剧情线的世界规则想法。",
+    "parentId": null,
+    "order": 1,
+    "descriptionBlocks": [
+      {
+        "id": "desc_worldview_pool",
+        "title": "待归档设定",
+        "content": "这里临时放置尚未归入具体剧情线的世界规则、势力背景和修炼体系想法。",
+        "order": 0
+      }
+    ],
+    "schemaVersion": 1
+  }
+]

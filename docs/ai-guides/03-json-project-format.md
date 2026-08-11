@@ -27,6 +27,8 @@ novel-project/
     faction_001.json
   relations/
     relations.json
+  plots/
+    plot_001.json
   events/
     event_001.json
   timeline/

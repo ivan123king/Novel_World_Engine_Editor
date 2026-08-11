@@ -6,6 +6,7 @@ import type {
   ItemFile,
   LocationFile,
   MapFile,
+  PlotFile,
   RelationGraphFile,
 } from './src/types';
 
@@ -26,6 +27,16 @@ declare global {
     baseDir: string;
     /** 已成功读取的物品列表。 */
     items: ItemFile[];
+    /** 单个文件读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
+  /** 剧情库读取结果，和 preload 暴露的数据结构保持一致。 */
+  interface PlotListResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 已成功读取的剧情块列表。 */
+    plots: PlotFile[];
     /** 单个文件读取失败时的非致命错误。 */
     errors: string[];
   }
@@ -74,6 +85,9 @@ declare global {
       saveItem: (item: ItemFile, baseDirPath?: string) => Promise<ItemFile>;
       deleteItem: (itemId: string, baseDirPath?: string) => Promise<void>;
       saveItemOrder: (itemIds: string[], baseDirPath?: string) => Promise<void>;
+      listPlots: (baseDirPath?: string) => Promise<PlotListResult>;
+      savePlot: (plot: PlotFile, baseDirPath?: string) => Promise<PlotFile>;
+      deletePlot: (plotId: string, baseDirPath?: string) => Promise<void>;
       listMapModule: (baseDirPath?: string) => Promise<MapModuleResult>;
       saveLocation: (location: LocationFile, baseDirPath?: string) => Promise<LocationFile>;
       deleteLocation: (locationId: string, baseDirPath?: string) => Promise<void>;

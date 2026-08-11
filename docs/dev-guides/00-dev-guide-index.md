@@ -30,6 +30,8 @@
 - `items/item-data-flow.md`：物品 JSON 文件读写流程。修改物品持久化、IPC、preload 或 renderer API 时阅读。
 - `map/map-module-design.md`：地图模块设计。实现地点地图画布、地点标记、子地图层级、地图 JSON 格式或地图 Inspector 前阅读。
 - `map/map-page-prototype.md`：地图页面设计。修改当前地图页、vue-konva 画布交互、地图读写或页面样式前阅读。
+- `plot/plot-data-structure.md`：剧情库数据结构设计。修改 `src/types/plot.ts`、`mock_data/plots.json` 或后续 `plots/*.json` 持久化结构前阅读。
+- `plot/plot-library-design.md`：剧情库模块设计。实现剧情块列表、面包屑、直接子节点面板、说明卡片或右键菜单前阅读。
 - `relations/relation-graph-design.md`：关系图谱模块设计。实现默认人物图谱、自定义图谱、左侧块列表拖拽排序、中间关系画布、右侧关系时间轴或关系图谱 JSON 格式前阅读。
 
 ## 编写新指南

@@ -6,6 +6,7 @@ import type {
   ItemFile,
   LocationFile,
   MapFile,
+  PlotFile,
   RelationGraphFile,
 } from '../../src/types';
 
@@ -50,6 +51,14 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('items:delete', itemId, baseDirPath),
   saveItemOrder: (itemIds: string[], baseDirPath?: string) =>
     ipcRenderer.invoke('items:save-order', itemIds, baseDirPath),
+
+  //剧情库模块
+  listPlots: (baseDirPath?: string) => ipcRenderer.invoke('plots:list', baseDirPath),
+  savePlot: (plot: PlotFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('plots:save', plot, baseDirPath),
+  deletePlot: (plotId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('plots:delete', plotId, baseDirPath),
+
   //地图模块
   listMapModule: (baseDirPath?: string) => ipcRenderer.invoke('maps:list-module', baseDirPath),
   saveLocation: (location: LocationFile, baseDirPath?: string) =>

@@ -6,7 +6,7 @@
  */
 import mockNovel from '../../mock_data/novel.json';
 import mockCharacters from '../../mock_data/characters.json';
-import mockEvents from '../../mock_data/events.json';
+import mockPlots from '../../mock_data/plots.json';
 import mockLocations from '../../mock_data/locations.json';
 import mockItems from '../../mock_data/items.json';
 </script>
@@ -40,15 +40,15 @@ import mockItems from '../../mock_data/items.json';
       </n-grid-item>
 
       <n-grid-item>
-        <n-card hoverable size="small" title="剧情事件" :bordered="true">
+        <n-card hoverable size="small" title="剧情库" :bordered="true">
           <div style="display: flex; align-items: baseline; gap: 10px">
             <n-tag type="success" size="large" round>
               <n-text strong style="font-size: 24px">
-                {{ mockEvents.length }}
+                {{ mockPlots.length }}
               </n-text>
             </n-tag>
             <n-text depth="2">
-              个剧情事件
+              个剧情节点
             </n-text>
           </div>
         </n-card>

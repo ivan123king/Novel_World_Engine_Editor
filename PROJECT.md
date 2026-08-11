@@ -25,6 +25,7 @@ npm run dev
 - `electron/main/system/`：应用系统配置服务，管理 `data/system/app-settings.json` 等工具自身设置。
 - `electron/main/characters/`：人物 JSON 文件读写服务，管理当前小说项目目录下的 `characters/*.json`。
 - `electron/main/items/`：物品 JSON 文件读写服务，管理当前小说项目目录下的 `items/*.json`。
+- `electron/main/plots/`：剧情库 JSON 文件读写服务，管理当前小说项目目录下的 `plots/*.json`。
 - `electron/main/relations/`：关系图谱 JSON 文件读写服务，管理当前小说项目目录下的 `relation-graphs/*.json` 和关系图谱排序元数据。
 - `electron/main/list-order/`：列表排序元数据服务，管理当前小说项目目录下的 `list-orders/*.json`，用于人物、物品等资源的用户自定义展示顺序。
 - `electron/main/file-system/`：本地基础目录解析、目录创建和通用 JSON 文件读写工具。
@@ -35,8 +36,9 @@ npm run dev
 - `src/router/`：renderer 页面路由配置，用于主工作台模块切换。
 - `src/views/`：主工作台右侧承载的模块页面。
 - `src/views/character/`：人物模块页面组件和本地状态逻辑。
+- `src/views/plot/`：剧情库模块的前端状态逻辑，当前阶段使用内存数据维护剧情树与 Inspector 交互。
 - `src/stores/`：renderer 侧轻量状态 store，当前保存已打开的小说项目信息。
-- `src/types/`：共享 TypeScript 数据结构；当前包含小说项目、人物、物品、地点、地图、关系图谱等 JSON 类型。
+- `src/types/`：共享 TypeScript 数据结构；当前包含小说项目、人物、物品、地点、地图、关系图谱、剧情节点等 JSON 类型。
 - `mock_data/`：开发期 mock 数据，真实 JSON 项目读写接入前用于页面展示。
 - `data/system/`：应用系统文件目录，只保存上一次打开的项目目录等工具配置，不保存小说领域数据。
 - `docs/ai-guides/`：给后续 AI 使用的产品方向和架构说明。

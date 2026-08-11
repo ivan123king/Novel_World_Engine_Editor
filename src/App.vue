@@ -44,7 +44,7 @@ const navigationItems: NavigationItem[] = [
   { label: '物品', key: '/items' },
   { label: '地图', key: '/locations' },
   { label: '关系', key: '/relations' },
-  { label: '剧情', key: '/events' },
+  { label: '剧情', key: '/plots' },
   { label: '时间线', key: '/timeline' },
   { label: 'AI 上下文', key: '/context-export' },
 ];

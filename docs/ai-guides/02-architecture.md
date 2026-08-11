@@ -32,7 +32,7 @@ novel-engine/
       ProjectHome.vue
       Characters.vue
       RelationGraph.vue
-      Events.vue
+      Plots.vue
       ContextExport.vue
     components/
       inspector/
