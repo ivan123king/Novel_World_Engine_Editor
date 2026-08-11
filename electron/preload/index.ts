@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import type { CharacterFile, CurrentProject, ItemFile, LocationFile, MapFile } from '../../src/types';
+import type {
+  CharacterFile,
+  CurrentProject,
+  ItemFile,
+  LocationFile,
+  MapFile,
+  RelationGraphFile,
+} from '../../src/types';
 
 /**
  * Electron preload 安全桥接。
@@ -53,4 +60,15 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('maps:save', map, baseDirPath),
   deleteMap: (mapId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('maps:delete', mapId, baseDirPath),
+
+  //关系图谱模块
+  listRelationGraphs: (baseDirPath?: string) => ipcRenderer.invoke('relations:list', baseDirPath),
+  saveRelationGraph: (graph: RelationGraphFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('relations:save-graph', graph, baseDirPath),
+  deleteRelationGraph: (graphId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('relations:delete-graph', graphId, baseDirPath),
+  saveRelationGraphOrder: (graphIds: string[], baseDirPath?: string) =>
+    ipcRenderer.invoke('relations:save-graph-order', graphIds, baseDirPath),
+  saveRelationGraphBlockOrder: (graphId: string, nodeIds: string[], baseDirPath?: string) =>
+    ipcRenderer.invoke('relations:save-block-order', graphId, nodeIds, baseDirPath),
 });

@@ -27,6 +27,7 @@ const PROJECT_DATA_DIRECTORIES = [
   'items',
   'locations',
   'maps',
+  'relation-graphs',
   'relations',
   'events',
   'timeline',

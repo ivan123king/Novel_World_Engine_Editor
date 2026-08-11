@@ -44,3 +44,23 @@ export {
   type CurrentProject,
   type NovelProjectFile,
 } from './project';
+export {
+  RELATION_GRAPH_SCHEMA_VERSION,
+  createRelationGraphBlockOrderFile,
+  createRelationGraphOrderFile,
+  isRelationGraphBlockOrderFile,
+  isRelationGraphFile,
+  isRelationGraphOrderFile,
+  type RelationCurrentState,
+  type RelationEntityRef,
+  type RelationEntityRefType,
+  type RelationGraphBlockOrderFile,
+  type RelationGraphEdge,
+  type RelationGraphFile,
+  type RelationGraphKind,
+  type RelationGraphNode,
+  type RelationGraphOrderFile,
+  type RelationGraphView,
+  type RelationHistoryRecord,
+  type RelationNodeKind,
+} from './relation';

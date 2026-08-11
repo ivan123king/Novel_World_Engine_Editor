@@ -1,1 +1,419 @@
-[]
+[
+  {
+    "id": "graph_default_characters",
+    "name": "人物图谱",
+    "kind": "character-default",
+    "description": "系统默认人物关系图谱，节点来自当前项目人物。",
+    "nodes": [
+      {
+        "id": "node_char_001",
+        "label": "人物1",
+        "kind": "entity-ref",
+        "entityRef": {
+          "type": "character",
+          "id": "char_001"
+        },
+        "view": {
+          "x": 170,
+          "y": 170
+        },
+        "customFields": {
+          "阵营": "青城旧部"
+        }
+      },
+      {
+        "id": "node_char_002",
+        "label": "人物2",
+        "kind": "entity-ref",
+        "entityRef": {
+          "type": "character",
+          "id": "char_002"
+        },
+        "view": {
+          "x": 520,
+          "y": 150
+        },
+        "customFields": {
+          "阵营": "朝堂密探"
+        }
+      },
+      {
+        "id": "node_char_003",
+        "label": "人物3",
+        "kind": "entity-ref",
+        "entityRef": {
+          "type": "character",
+          "id": "char_003"
+        },
+        "view": {
+          "x": 360,
+          "y": 390
+        },
+        "customFields": {
+          "公开身份": "未知"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge_char_001_002",
+        "from": "node_char_001",
+        "to": "node_char_002",
+        "current": {
+          "type": "互相试探",
+          "score": 42,
+          "reason": "人物2掌握了人物1的旧案线索，但暂时需要人物1协助追查青城山失踪事件。"
+        },
+        "history": [
+          {
+            "id": "hist_char_001",
+            "label": "黑风寨事件后",
+            "order": 30,
+            "type": "临时合作",
+            "score": 55,
+            "reason": "两人被迫共同脱身，形成短暂信任。"
+          },
+          {
+            "id": "hist_char_002",
+            "label": "密信暴露",
+            "order": 50,
+            "type": "互相试探",
+            "score": 42,
+            "reason": "人物1发现人物2隐瞒朝堂身份，双方重新保持距离。"
+          }
+        ],
+        "customFields": {
+          "是否公开": false
+        }
+      },
+      {
+        "id": "edge_char_001_003",
+        "from": "node_char_001",
+        "to": "node_char_003",
+        "current": {
+          "type": "旧识",
+          "score": 68,
+          "reason": "人物3曾在青城山旧案中救过人物1，但真实动机尚不明确。"
+        },
+        "history": [
+          {
+            "id": "hist_char_003",
+            "label": "十年前",
+            "order": 10,
+            "type": "救命之恩",
+            "score": 75,
+            "reason": "人物3协助人物1逃离追捕。"
+          },
+          {
+            "id": "hist_char_004",
+            "label": "当前",
+            "order": 70,
+            "type": "旧识",
+            "score": 68,
+            "reason": "人物3再次出现，只留下青城山令牌。"
+          }
+        ],
+        "customFields": {
+          "共同秘密": "青城山旧案幸存者名单"
+        }
+      },
+      {
+        "id": "edge_char_002_003",
+        "from": "node_char_002",
+        "to": "node_char_003",
+        "current": {
+          "type": "追查",
+          "score": 61,
+          "reason": "人物2怀疑人物3与朝堂失窃密档有关。"
+        },
+        "history": [
+          {
+            "id": "hist_char_005",
+            "label": "密档失窃后",
+            "order": 45,
+            "type": "追查",
+            "score": 61,
+            "reason": "人物3的行踪与密档失窃时间吻合。"
+          }
+        ],
+        "customFields": {
+          "表面关系": "陌生人"
+        }
+      }
+    ],
+    "view": {
+      "layout": "force",
+      "zoom": 1,
+      "pan": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "createdAt": "2026-08-11T00:00:00.000Z",
+    "updatedAt": "2026-08-11T00:00:00.000Z",
+    "schemaVersion": 1
+  },
+  {
+    "id": "graph_qingcheng_conflict",
+    "name": "青城山关系",
+    "kind": "custom",
+    "description": "围绕青城山旧案、灵脉归属和各方势力的当前冲突。",
+    "nodes": [
+      {
+        "id": "node_qingcheng_mountain",
+        "label": "青城山",
+        "kind": "graph-block",
+        "view": {
+          "x": 180,
+          "y": 160
+        },
+        "customFields": {
+          "类型": "地点"
+        }
+      },
+      {
+        "id": "node_huashan_faction",
+        "label": "华山派",
+        "kind": "graph-block",
+        "view": {
+          "x": 550,
+          "y": 180
+        },
+        "customFields": {
+          "类型": "势力"
+        }
+      },
+      {
+        "id": "node_spirit_vein",
+        "label": "地底灵脉",
+        "kind": "graph-block",
+        "view": {
+          "x": 360,
+          "y": 380
+        },
+        "customFields": {
+          "类型": "资源"
+        }
+      },
+      {
+        "id": "node_black_wind",
+        "label": "黑风寨余部",
+        "kind": "graph-block",
+        "view": {
+          "x": 710,
+          "y": 350
+        },
+        "customFields": {
+          "类型": "势力"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge_qingcheng_spirit",
+        "from": "node_qingcheng_mountain",
+        "to": "node_spirit_vein",
+        "current": {
+          "type": "封印源头",
+          "score": 88,
+          "reason": "青城山禁地封住灵脉外泄，是旧案发生的直接原因。"
+        },
+        "history": [
+          {
+            "id": "hist_qingcheng_001",
+            "label": "旧掌门时代",
+            "order": 5,
+            "type": "秘密守护",
+            "score": 92,
+            "reason": "旧掌门以门规隐藏灵脉存在。"
+          },
+          {
+            "id": "hist_qingcheng_002",
+            "label": "青城山大火后",
+            "order": 25,
+            "type": "封印源头",
+            "score": 88,
+            "reason": "封印破损，灵脉气息开始外泄。"
+          }
+        ],
+        "customFields": {
+          "风险等级": "高"
+        }
+      },
+      {
+        "id": "edge_huashan_spirit",
+        "from": "node_huashan_faction",
+        "to": "node_spirit_vein",
+        "current": {
+          "type": "争夺",
+          "score": 76,
+          "reason": "华山派需要灵脉修复镇派剑阵。"
+        },
+        "history": [
+          {
+            "id": "hist_qingcheng_003",
+            "label": "第18章",
+            "order": 18,
+            "type": "暗中探查",
+            "score": 45,
+            "reason": "华山派派弟子潜入青城山。"
+          },
+          {
+            "id": "hist_qingcheng_004",
+            "label": "第24章",
+            "order": 24,
+            "type": "争夺",
+            "score": 76,
+            "reason": "双方在禁地入口爆发冲突。"
+          }
+        ],
+        "customFields": {
+          "是否公开": true
+        }
+      },
+      {
+        "id": "edge_blackwind_huashan",
+        "from": "node_black_wind",
+        "to": "node_huashan_faction",
+        "current": {
+          "type": "雇佣",
+          "score": 35,
+          "reason": "黑风寨余部收受华山派外围弟子的银票，但并不知道真正目标。"
+        },
+        "history": [
+          {
+            "id": "hist_qingcheng_005",
+            "label": "黑风寨事件前夜",
+            "order": 12,
+            "type": "雇佣",
+            "score": 35,
+            "reason": "外围弟子让黑风寨制造混乱。"
+          }
+        ],
+        "customFields": {
+          "证据": "银票编号"
+        }
+      }
+    ],
+    "view": {
+      "layout": "force",
+      "zoom": 1,
+      "pan": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "createdAt": "2026-08-11T00:00:00.000Z",
+    "updatedAt": "2026-08-11T00:00:00.000Z",
+    "schemaVersion": 1
+  },
+  {
+    "id": "graph_artifact_ownership",
+    "name": "神器归属",
+    "kind": "custom",
+    "description": "记录关键物品在当前世界状态中的持有、觊觎和保护关系。",
+    "nodes": [
+      {
+        "id": "node_dragon_blade",
+        "label": "断龙刃",
+        "kind": "graph-block",
+        "view": {
+          "x": 210,
+          "y": 220
+        },
+        "customFields": {
+          "类型": "物品"
+        }
+      },
+      {
+        "id": "node_lincheng",
+        "label": "林辰",
+        "kind": "graph-block",
+        "view": {
+          "x": 520,
+          "y": 150
+        },
+        "customFields": {
+          "类型": "人物"
+        }
+      },
+      {
+        "id": "node_hidden_vault",
+        "label": "旧宫密库",
+        "kind": "graph-block",
+        "view": {
+          "x": 490,
+          "y": 410
+        },
+        "customFields": {
+          "类型": "地点"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge_blade_lincheng",
+        "from": "node_dragon_blade",
+        "to": "node_lincheng",
+        "current": {
+          "type": "持有者",
+          "score": 91,
+          "reason": "林辰在旧宫密库取走断龙刃，但尚未公开。"
+        },
+        "history": [
+          {
+            "id": "hist_artifact_001",
+            "label": "旧宫密库开启",
+            "order": 60,
+            "type": "持有者",
+            "score": 91,
+            "reason": "林辰通过密钥进入密库并取走断龙刃。"
+          }
+        ],
+        "customFields": {
+          "是否公开": false
+        }
+      },
+      {
+        "id": "edge_vault_blade",
+        "from": "node_hidden_vault",
+        "to": "node_dragon_blade",
+        "current": {
+          "type": "原封存地点",
+          "score": 64,
+          "reason": "断龙刃曾被封存在旧宫密库三十年，密库记录仍然影响追查方向。"
+        },
+        "history": [
+          {
+            "id": "hist_artifact_002",
+            "label": "三十年前",
+            "order": 1,
+            "type": "封存",
+            "score": 90,
+            "reason": "先帝命内廷将断龙刃封入密库。"
+          },
+          {
+            "id": "hist_artifact_003",
+            "label": "当前",
+            "order": 61,
+            "type": "原封存地点",
+            "score": 64,
+            "reason": "物品已转移，但线索仍指向密库。"
+          }
+        ],
+        "customFields": {}
+      }
+    ],
+    "view": {
+      "layout": "force",
+      "zoom": 1,
+      "pan": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "createdAt": "2026-08-11T00:00:00.000Z",
+    "updatedAt": "2026-08-11T00:00:00.000Z",
+    "schemaVersion": 1
+  }
+]

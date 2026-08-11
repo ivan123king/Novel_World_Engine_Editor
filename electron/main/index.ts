@@ -19,6 +19,13 @@ import {
   saveLocation,
   saveMap,
 } from './maps/map-service';
+import {
+  deleteRelationGraphFile,
+  listRelationGraphs,
+  saveRelationGraph,
+  saveRelationGraphBlockOrder,
+  saveRelationGraphOrder,
+} from './relations/relation-graph-service';
 import { installNovelMenu } from './menu/novel-menu';
 import {
   createProjectFromMenu,
@@ -178,6 +185,28 @@ ipcMain.handle('maps:save', (_event, map, baseDirPath?: string) =>
 
 ipcMain.handle('maps:delete', (_event, mapId: string, baseDirPath?: string) =>
   deleteMapFile(mapId, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('relations:list', (_event, baseDirPath?: string) =>
+  listRelationGraphs(resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('relations:save-graph', (_event, graph, baseDirPath?: string) =>
+  saveRelationGraph(graph, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('relations:delete-graph', (_event, graphId: string, baseDirPath?: string) =>
+  deleteRelationGraphFile(graphId, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('relations:save-graph-order', (_event, graphIds: string[], baseDirPath?: string) =>
+  saveRelationGraphOrder(graphIds, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle(
+  'relations:save-block-order',
+  (_event, graphId: string, nodeIds: string[], baseDirPath?: string) =>
+    saveRelationGraphBlockOrder(graphId, nodeIds, resolveCurrentProjectDirectory(baseDirPath)),
 );
 
 app.whenReady().then(() => {

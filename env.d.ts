@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 
-import type { CharacterFile, CurrentProject, ItemFile, LocationFile, MapFile } from './src/types';
+import type {
+  CharacterFile,
+  CurrentProject,
+  ItemFile,
+  LocationFile,
+  MapFile,
+  RelationGraphFile,
+} from './src/types';
 
 declare global {
   /** 人物列表读取结果，和 preload 暴露的数据结构保持一致。 */
@@ -35,6 +42,16 @@ declare global {
     errors: string[];
   }
 
+  /** 关系图谱模块读取结果，和 preload 暴露的数据结构保持一致。 */
+  interface RelationGraphModuleResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 已成功读取的关系图谱列表。 */
+    graphs: RelationGraphFile[];
+    /** 单个文件或排序元数据读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
   interface Window {
     novelEngine: {
       getAppInfo: () => Promise<{
@@ -62,6 +79,18 @@ declare global {
       deleteLocation: (locationId: string, baseDirPath?: string) => Promise<void>;
       saveMap: (map: MapFile, baseDirPath?: string) => Promise<MapFile>;
       deleteMap: (mapId: string, baseDirPath?: string) => Promise<void>;
+      listRelationGraphs: (baseDirPath?: string) => Promise<RelationGraphModuleResult>;
+      saveRelationGraph: (
+        graph: RelationGraphFile,
+        baseDirPath?: string,
+      ) => Promise<RelationGraphFile>;
+      deleteRelationGraph: (graphId: string, baseDirPath?: string) => Promise<void>;
+      saveRelationGraphOrder: (graphIds: string[], baseDirPath?: string) => Promise<void>;
+      saveRelationGraphBlockOrder: (
+        graphId: string,
+        nodeIds: string[],
+        baseDirPath?: string,
+      ) => Promise<void>;
     };
   }
 }
