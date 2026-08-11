@@ -1014,15 +1014,6 @@ export function useRelationGraphEditor() {
             reason: edgeForm.reason.trim(),
           },
           history: [
-            {
-              id: createSafeId('hist'),
-              label: '当前',
-              order: Date.now(),
-              type: edgeForm.type.trim(),
-              score,
-              reason: edgeForm.reason.trim() || '创建关系时自动生成的第一条变化记录。',
-              createdAt: new Date().toISOString(),
-            },
           ],
           customFields: {},
         };
