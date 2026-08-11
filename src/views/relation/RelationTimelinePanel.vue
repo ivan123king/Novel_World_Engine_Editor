@@ -122,13 +122,7 @@ const emit = defineEmits<{
       </section>
     </div>
 
-    <div v-else-if="props.selectionMode === 'node' && props.selectedNode" class="empty-inspector">
-      <h4>{{ props.selectedNode.label }}</h4>
-      <p>已选中块。点击中间画布中的关系线，可查看当前关系状态和变化记录。</p>
-      <n-tag size="small">
-        {{ props.selectedNode.kind === 'entity-ref' ? '实体引用节点' : '自定义图谱块' }}
-      </n-tag>
-    </div>
+    
 
     <n-empty v-else description="请选择一条关系线查看时间轴" />
   </aside>

@@ -569,6 +569,32 @@ export function useRelationGraphEditor() {
     resetSelectionForCurrentGraph();
   });
 
+  /** 新增关系时切换起点后，自动优先选择一个尚未建立关系的终点。 */
+  watch(
+    () => edgeForm.from,
+    () => {
+      const graph = currentGraph.value;
+
+      if (!graph || !isEdgeModalOpen.value || edgeFormMode.value !== 'create' || !edgeForm.from) {
+        return;
+      }
+
+      const currentTargetIsUsable =
+        edgeForm.to &&
+        edgeForm.to !== edgeForm.from &&
+        !findExistingRelationEdge(graph, edgeForm.from, edgeForm.to);
+
+      if (currentTargetIsUsable) {
+        return;
+      }
+
+      edgeForm.to =
+        findAvailableEdgeTargetNode(graph, edgeForm.from)?.id ??
+        graph.nodes.find((node) => node.id !== edgeForm.from)?.id ??
+        '';
+    },
+  );
+
   /**
    * 根据节点 ID 查找当前图谱节点。
    * @param nodeId 节点稳定 ID
@@ -610,11 +636,44 @@ export function useRelationGraphEditor() {
    * @param from 起点块 ID
    */
   function findAvailableEdgeTargetNode(graph: RelationGraphFile, from: string): RelationGraphNode | null {
-    return (
-      graph.nodes.find((node) => node.id !== from && !findExistingRelationEdge(graph, from, node.id)) ??
-      graph.nodes.find((node) => node.id !== from) ??
-      null
-    );
+    return graph.nodes.find((node) => node.id !== from && !findExistingRelationEdge(graph, from, node.id)) ?? null;
+  }
+
+  /**
+   * 查找新增关系时可用的第一组节点对。
+   * 优先使用当前根节点作为起点；如果当前根节点已连满，则从整张图谱中寻找可新增的节点对。
+   * @param graph 当前图谱
+   * @param preferredFromNodeId 优先作为起点的块 ID
+   */
+  function findAvailableEdgePair(
+    graph: RelationGraphFile,
+    preferredFromNodeId: string,
+  ): { from: RelationGraphNode; to: RelationGraphNode } | null {
+    const preferredFromNode = graph.nodes.find((node) => node.id === preferredFromNodeId);
+
+    if (preferredFromNode) {
+      const preferredTargetNode = findAvailableEdgeTargetNode(graph, preferredFromNode.id);
+
+      if (preferredTargetNode) {
+        return {
+          from: preferredFromNode,
+          to: preferredTargetNode,
+        };
+      }
+    }
+
+    for (const fromNode of graph.nodes) {
+      const targetNode = findAvailableEdgeTargetNode(graph, fromNode.id);
+
+      if (targetNode) {
+        return {
+          from: fromNode,
+          to: targetNode,
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -886,12 +945,18 @@ export function useRelationGraphEditor() {
     }
 
     const fromNode = selectedNode.value ?? graph.nodes[0];
-    const targetNode = findAvailableEdgeTargetNode(graph, fromNode.id);
+    const availablePair = findAvailableEdgePair(graph, fromNode.id);
+
+    if (!availablePair) {
+      saveError.value = '当前图谱中所有块之间都已经存在关系，请编辑已有关系，不要重复添加。';
+      return;
+    }
+
     saveError.value = '';
     edgeFormMode.value = 'create';
     editingEdgeId.value = '';
-    edgeForm.from = fromNode.id;
-    edgeForm.to = targetNode?.id ?? '';
+    edgeForm.from = availablePair.from.id;
+    edgeForm.to = availablePair.to.id;
     edgeForm.type = '';
     edgeForm.score = null;
     edgeForm.reason = '';
