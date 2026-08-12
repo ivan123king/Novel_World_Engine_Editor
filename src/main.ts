@@ -30,6 +30,7 @@ import {
   NDivider,
   NScrollbar,
   NCode,
+  NDropdown,
 } from 'naive-ui';
 import App from './App.vue';
 import { router } from './router';
@@ -65,6 +66,7 @@ const naive = create({
     NDivider,
     NScrollbar,
     NCode,
+    NDropdown,
   ],
 });
 
