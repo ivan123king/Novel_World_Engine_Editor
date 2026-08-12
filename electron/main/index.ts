@@ -69,6 +69,7 @@ function createWindow(): void {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: true,
     },
   });
 
@@ -81,6 +82,18 @@ function createWindow(): void {
   currentWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // 注册窗口级调试快捷键，让 Electron 窗口获得焦点时也能像网页一样打开开发者工具。
+  currentWindow.webContents.on('before-input-event', (event, input) => {
+    const isFunctionKeyDebug = input.key === 'F12';
+    const isBrowserDebugShortcut =
+      input.shift && input.key.toLowerCase() === 'i' && (input.control || input.meta);
+
+    if (isFunctionKeyDebug || isBrowserDebugShortcut) {
+      event.preventDefault();
+      currentWindow.webContents.toggleDevTools();
+    }
   });
 
   currentWindow.webContents.once('did-finish-load', async () => {

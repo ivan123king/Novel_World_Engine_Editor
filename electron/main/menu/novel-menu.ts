@@ -58,6 +58,19 @@ export function installNovelMenu(getMainWindow: () => BrowserWindow | null): voi
       submenu: [
         { role: 'minimize', label: '最小化' },
         { role: 'reload', label: '重新加载' },
+        {
+          label: '开发者工具',
+          accelerator: 'F12',
+          click: () => {
+            const mainWindow = getMainWindow();
+
+            if (!mainWindow) {
+              return;
+            }
+
+            mainWindow.webContents.toggleDevTools();
+          },
+        },
         { type: 'separator' },
         { role: 'quit', label: process.platform === 'darwin' ? `退出 ${app.name}` : '退出' },
       ],
