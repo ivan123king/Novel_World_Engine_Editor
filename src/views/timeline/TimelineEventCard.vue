@@ -2,8 +2,9 @@
 /**
  * 时间线事件卡片。
  * 卡片只展示事件标题和所属时间，长内容由详情弹框承载。
+ * 拖拽排序使用原生 HTML5 Drag & Drop API，与左侧时间块实现保持一致，
+ * 避免在 Electron 渲染进程中自定义 mousemove 监听导致的时序问题。
  */
-import { ref } from 'vue';
 import type { TimelineEvent } from '@/types';
 
 const props = defineProps<{
@@ -19,6 +20,8 @@ const props = defineProps<{
   dragging: boolean;
   /** 是否为拖放目标。 */
   dropTarget: boolean;
+  /** 拖放到目标事件前面或后面。 */
+  dropPlacement: 'before' | 'after';
 }>();
 
 const emit = defineEmits<{
@@ -28,66 +31,15 @@ const emit = defineEmits<{
   detail: [event: TimelineEvent];
   /** 删除事件。 */
   delete: [eventId: string];
-  /** 开始拖拽。 */
+  /** 开始拖拽事件（原生 dragstart 触发）。 */
   dragstart: [eventId: string];
-  /** 悬停拖放目标。 */
+  /** 拖拽悬停在当前事件上，用于判断前后插入位置。 */
   draghover: [eventId: string, placement: 'before' | 'after'];
-  /** 完成拖放。 */
+  /** 完成拖放，将当前正在拖的事件放到此事件前后。 */
   drop: [eventId: string, placement: 'before' | 'after'];
-  /** 结束拖拽。 */
+  /** 结束整个拖拽会话（无论是否成功放置）。 */
   dragend: [];
-  /** 开始指针拖拽。 */
-  pointerDragStart: [eventId: string, event: PointerEvent];
 }>();
-
-/** 拖拽后的点击抑制标记，避免排序完成后触发 click 反向取消选中。 */
-const suppressNextClick = ref(false);
-
-/**
- * 处理事件卡片拖拽开始。
- * Chromium 原生拖拽需要写入 dataTransfer 数据，避免只有 draggable 但不产生有效拖拽会话。
- */
-function handleDragStart(event: DragEvent, eventId: string): void {
-  if (!event.dataTransfer) {
-    return;
-  }
-
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('text/plain', eventId);
-  emit('dragstart', eventId);
-}
-
-/**
- * 根据鼠标命中事件卡片位置判断拖放到目标前面或后面。
- * 平铺网格中优先按横向位置判断，窄卡片或换行场景再兼容纵向判断。
- * @param event 拖拽事件
- */
-function resolveEventDropPlacement(event: DragEvent): 'before' | 'after' {
-  const target = event.currentTarget;
-
-  if (!(target instanceof HTMLElement)) {
-    return 'before';
-  }
-
-  const rect = target.getBoundingClientRect();
-  const horizontalPlacement = event.clientX > rect.left + rect.width / 2 ? 'after' : 'before';
-  const verticalPlacement = event.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
-
-  return rect.width >= rect.height ? horizontalPlacement : verticalPlacement;
-}
-
-/**
- * 处理拖拽悬停，明确告诉浏览器当前目标允许移动放置。
- * @param dragEvent 原生拖拽事件
- * @param eventId 目标事件 ID
- */
-function handleDragOver(dragEvent: DragEvent, eventId: string): void {
-  if (dragEvent.dataTransfer) {
-    dragEvent.dataTransfer.dropEffect = 'move';
-  }
-
-  emit('draghover', eventId, resolveEventDropPlacement(dragEvent));
-}
 
 /**
  * 判断指针是否从按钮等交互控件开始，避免拖拽吞掉详情、删除操作。
@@ -98,54 +50,126 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * 处理指针拖拽开始。
- * 事件排序优先使用 pointer 事件，避免 Electron 中原生 HTML5 drag/drop 失效。
+ * 处理事件卡片拖拽开始。
+ * 写入 dataTransfer，确保 Electron/Chromium 生成有效的原生拖拽会话，
+ * 并在点击到按钮等可交互元素时提前返回，不触发拖拽。
+ * ★ 关键修复：effectAllowed 和 setData 必须写入后再 emit，
+ *   且必须在同一个同步宏任务中完成，Chromium 才会绑定有效拖拽会话。
  */
-function handlePointerDown(event: PointerEvent, eventId: string): void {
-  if (props.disabled || event.button !== 0 || isInteractiveTarget(event.target)) {
+function handleDragStart(event: DragEvent, eventId: string): void {
+  if (props.disabled || isInteractiveTarget(event.target)) {
+    event.preventDefault();
     return;
   }
 
-  suppressNextClick.value = false;
-  emit('pointerDragStart', eventId, event);
+  const dt = event.dataTransfer;
+  if (!dt) {
+    event.preventDefault();
+    return;
+  }
+
+  try {
+    dt.effectAllowed = 'move';
+    dt.setData('text/plain', eventId);
+    dt.setData('application/x-novel-engine-event-id', eventId);
+  } catch {
+    event.preventDefault();
+    return;
+  }
+
+  console.log('[TimelineEventCard] handleDragStart 成功: eventId=', eventId, 'effectAllowed=', dt.effectAllowed);
+  emit('dragstart', eventId);
 }
 
 /**
- * 处理卡片点击。
- * 指针拖拽结束后浏览器仍可能派发 click，需要忽略这一次点击。
+ * 根据鼠标位于卡片左半区还是右半区（事件卡片横向网格排列），判断插入位置。
+ * @param event 原生拖拽事件
  */
-function handleClick(eventId: string): void {
-  if (suppressNextClick.value) {
-    suppressNextClick.value = false;
+function resolveDropPlacement(event: DragEvent): 'before' | 'after' {
+  const target = event.currentTarget;
+
+  if (!(target instanceof HTMLElement)) {
+    return 'before';
+  }
+
+  const targetRect = target.getBoundingClientRect();
+  return event.clientX > targetRect.left + targetRect.width / 2 ? 'after' : 'before';
+}
+
+/**
+ * 处理拖拽悬停，明确允许 move 放置，并向父级上报悬停位置。
+ * ★ 关键修复：
+ *   1. 函数第一行显式调用 preventDefault() + stopPropagation()，
+ *      不依赖 Vue 的 .prevent 修饰符（在 Electron 冒泡场景下修饰符时序不稳定）。
+ *   2. 先 preventDefault，再设置 dropEffect = 'move'，
+ *      Chromium 才会认为此元素是合法 drop 目标，进而在松开鼠标时触发 drop 事件。
+ */
+function handleDragOver(dragEvent: DragEvent): void {
+  if (props.disabled) {
     return;
   }
 
-  emit('select', eventId);
+  dragEvent.preventDefault();
+  dragEvent.stopPropagation();
+
+  if (dragEvent.dataTransfer) {
+    dragEvent.dataTransfer.dropEffect = 'move';
+  }
+
+  emit('draghover', props.event.id, resolveDropPlacement(dragEvent));
 }
 
-/** 标记下一次 click 来自拖拽结束，应被忽略。 */
-function suppressClickAfterDrag(): void {
-  suppressNextClick.value = true;
-}
+/**
+ * 处理 drop 放置事件。
+ * ★ 关键修复：drop 事件也必须显式调用 preventDefault() + stopPropagation()，
+ *   否则 Chromium 可能把它当作"无效 drop"，跳转到浏览器默认的文件拖放页面行为。
+ *   另外在此读取 dataTransfer.getData()，用于双重校验与日志。
+ */
+function handleDrop(dragEvent: DragEvent): void {
+  if (props.disabled) {
+    return;
+  }
 
-defineExpose({
-  suppressClickAfterDrag,
-});
+  dragEvent.preventDefault();
+  dragEvent.stopPropagation();
+
+  const placement = resolveDropPlacement(dragEvent);
+  const transferId = dragEvent.dataTransfer?.getData('text/plain') ?? null;
+
+  console.log(
+    '[TimelineEventCard] handleDrop 成功: on=', props.event.id,
+    'placement=', placement,
+    'dataTransfer.id=', transferId,
+  );
+
+  emit('drop', props.event.id, placement);
+}
 </script>
 
 <template>
   <article
     class="event-card"
     :data-event-card-id="event.id"
-    :class="{ 'is-active': active, 'is-dragging': dragging, 'is-drop-target': dropTarget }"
-    :draggable="false"
-    @click="handleClick(event.id)"
-    @pointerdown="handlePointerDown($event, event.id)"
-    @dragstart="handleDragStart($event, event.id)"
-    @dragenter.prevent="handleDragOver($event, event.id)"
-    @dragover.prevent="handleDragOver($event, event.id)"
-    @drop.prevent="emit('drop', event.id, resolveEventDropPlacement($event))"
-    @dragend="emit('dragend')"
+    :class="{
+      'is-active': active,
+      'is-dragging': dragging,
+      'is-drop-target': dropTarget,
+      'is-drop-before': dropTarget && dropPlacement === 'before',
+      'is-drop-after': dropTarget && dropPlacement === 'after',
+    }"
+    :draggable="!disabled"
+    @click="emit('select', event.id)"
+    @dragstart="(e) => {
+      console.log('[TimelineEventCard] ① dragstart 触发:', event.id, '有 dataTransfer:', !!e.dataTransfer);
+      handleDragStart(e, event.id);
+    }"
+    @dragenter="handleDragOver"
+    @dragover="handleDragOver"
+    @drop="handleDrop"
+    @dragend="() => {
+      console.log('[TimelineEventCard] ④ dragend 触发:', event.id);
+      emit('dragend');
+    }"
   >
     <div class="event-main">
       <h4 class="event-title">{{ event.title || '未命名事件' }}</h4>
@@ -164,6 +188,7 @@ defineExpose({
 <style scoped>
 /** 事件卡片，保持短内容展示。 */
 .event-card {
+  position: relative;
   display: grid;
   gap: 10px;
   min-height: 88px;
@@ -190,6 +215,25 @@ defineExpose({
 
 .event-card.is-dragging {
   opacity: 0.52;
+}
+
+.event-card.is-drop-before::before,
+.event-card.is-drop-after::after {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  background: #2f80ed;
+  border-radius: 999px;
+  content: '';
+}
+
+.event-card.is-drop-before::before {
+  left: -8px;
+}
+
+.event-card.is-drop-after::after {
+  right: -8px;
 }
 
 /** 事件卡片主要信息。 */

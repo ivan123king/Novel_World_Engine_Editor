@@ -38,6 +38,7 @@ const {
   timeBlockDropPlacement,
   draggingEventId,
   dragOverEventId,
+  eventDropPlacement,
   hasErrorMessage,
   canSubmitTimeBlock,
   canSubmitEvent,
@@ -65,6 +66,7 @@ const {
   deleteEvent,
   startEventDrag,
   hoverEventDropTarget,
+  clearEventDropTarget,
   resetEventDrag,
   dropEventOn,
 } = useTimelineWorkbench();
@@ -147,12 +149,14 @@ onMounted(() => {
         :disabled="isSaving || isLoading"
         :dragging-event-id="draggingEventId"
         :drag-over-event-id="dragOverEventId"
+        :event-drop-placement="eventDropPlacement"
         @create-event="openCreateEvent"
         @select-event="selectEvent"
         @detail-event="openEventDetail"
         @delete-event="void deleteEvent($event)"
         @start-drag="startEventDrag"
         @hover-drop-target="hoverEventDropTarget"
+        @clear-drop-target="clearEventDropTarget"
         @drop-on="(eventId, placement) => void dropEventOn(eventId, placement)"
         @reset-drag="resetEventDrag"
       />

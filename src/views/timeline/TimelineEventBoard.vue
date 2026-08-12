@@ -2,8 +2,10 @@
 /**
  * 时间线事件平铺区。
  * 展示当前时间块下的事件流，新事件靠前，旧事件靠后。
+ * 拖拽排序完全委托子组件 TimelineEventCard 中
+ * 的原生 HTML5 Drag & Drop API，与左侧时间块实现保持一致，
+ * 避免在 Electron 渲染进程中自定义 mousemove 监听带来的时序问题。
  */
-import { onBeforeUnmount, ref } from 'vue';
 import TimelineEventCard from '@/views/timeline/TimelineEventCard.vue';
 import type { TimelineEvent, TimelineTimeBlock } from '@/types';
 
@@ -20,6 +22,8 @@ const props = defineProps<{
   draggingEventId: string | null;
   /** 悬停目标事件 ID。 */
   dragOverEventId: string | null;
+  /** 当前事件拖放插入位置。 */
+  eventDropPlacement: 'before' | 'after';
 }>();
 
 const emit = defineEmits<{
@@ -31,179 +35,17 @@ const emit = defineEmits<{
   detailEvent: [event: TimelineEvent];
   /** 删除事件。 */
   deleteEvent: [eventId: string];
-  /** 开始事件拖拽。 */
+  /** 开始事件拖拽会话（原生 dragstart）。 */
   startDrag: [eventId: string];
-  /** 悬停事件拖放目标。 */
+  /** 悬停到事件拖放目标，判断前后插入位置。 */
   hoverDropTarget: [eventId: string, placement: 'before' | 'after'];
-  /** 拖放到事件。 */
+  /** 清空拖放目标高亮，但保持拖拽会话。 */
+  clearDropTarget: [];
+  /** 完成拖放，将事件放到目标前后。 */
   dropOn: [eventId: string, placement: 'before' | 'after'];
-  /** 结束拖拽。 */
+  /** 结束拖拽会话（dragend 触发）。 */
   resetDrag: [];
 }>();
-
-/** 指针拖拽起点，移动距离超过阈值后才视为排序拖拽。 */
-const pointerDragStartPoint = ref<{ x: number; y: number } | null>(null);
-
-/** 当前指针拖拽的事件 ID。 */
-const pointerDraggingEventId = ref<string | null>(null);
-
-/** 当前是否已经进入有效排序拖拽状态。 */
-const isPointerSorting = ref(false);
-
-/** 指针拖拽启动阈值，避免普通点击被误判成拖拽。 */
-const POINTER_DRAG_THRESHOLD = 6;
-
-/**
- * 根据指针所在位置解析目标事件和前后插入位置。
- * @param pointerEvent 指针事件
- */
-function resolvePointerDropTarget(pointerEvent: PointerEvent): {
-  eventId: string;
-  placement: 'before' | 'after';
-} | null {
-  const element = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY);
-  const cardElement = element?.closest('[data-event-card-id]');
-
-  if (!(cardElement instanceof HTMLElement)) {
-    return null;
-  }
-
-  const eventId = cardElement.dataset.eventCardId;
-
-  if (!eventId || eventId === pointerDraggingEventId.value) {
-    return null;
-  }
-
-  const rect = cardElement.getBoundingClientRect();
-  const horizontalPlacement = pointerEvent.clientX > rect.left + rect.width / 2 ? 'after' : 'before';
-  const verticalPlacement = pointerEvent.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
-
-  return {
-    eventId,
-    placement: rect.width >= rect.height ? horizontalPlacement : verticalPlacement,
-  };
-}
-
-/**
- * 重置指针拖拽状态，并同步清理 workbench 中的拖拽状态。
- */
-function resetPointerDrag(): void {
-  pointerDragStartPoint.value = null;
-  pointerDraggingEventId.value = null;
-  isPointerSorting.value = false;
-  emit('resetDrag');
-  window.removeEventListener('pointermove', handlePointerMove);
-  window.removeEventListener('pointerup', handlePointerUp);
-  window.removeEventListener('pointercancel', handlePointerCancel);
-}
-
-/**
- * 抑制排序结束后浏览器补发的 click。
- * @param mouseEvent 鼠标事件
- */
-function suppressNextWindowClick(mouseEvent: MouseEvent): void {
-  mouseEvent.preventDefault();
-  mouseEvent.stopPropagation();
-}
-
-/**
- * 处理指针移动，实时更新拖放目标。
- * @param pointerEvent 指针事件
- */
-function handlePointerMove(pointerEvent: PointerEvent): void {
-  const startPoint = pointerDragStartPoint.value;
-  const eventId = pointerDraggingEventId.value;
-
-  if (!startPoint || !eventId) {
-    return;
-  }
-
-  const movedDistance = Math.hypot(
-    pointerEvent.clientX - startPoint.x,
-    pointerEvent.clientY - startPoint.y,
-  );
-
-  if (!isPointerSorting.value && movedDistance < POINTER_DRAG_THRESHOLD) {
-    return;
-  }
-
-  pointerEvent.preventDefault();
-
-  if (!isPointerSorting.value) {
-    isPointerSorting.value = true;
-    emit('startDrag', eventId);
-  }
-
-  const target = resolvePointerDropTarget(pointerEvent);
-
-  if (!target) {
-    emit('resetDrag');
-    emit('startDrag', eventId);
-    return;
-  }
-
-  emit('hoverDropTarget', target.eventId, target.placement);
-}
-
-/**
- * 处理指针释放，提交最终排序。
- * @param pointerEvent 指针事件
- */
-function handlePointerUp(pointerEvent: PointerEvent): void {
-  if (!isPointerSorting.value) {
-    resetPointerDrag();
-    return;
-  }
-
-  const target = resolvePointerDropTarget(pointerEvent);
-
-  if (target) {
-    window.addEventListener('click', suppressNextWindowClick, {
-      capture: true,
-      once: true,
-    });
-    emit('dropOn', target.eventId, target.placement);
-    resetPointerDrag();
-  } else {
-    resetPointerDrag();
-  }
-
-  pointerEvent.preventDefault();
-}
-
-/**
- * 处理指针取消。
- */
-function handlePointerCancel(): void {
-  resetPointerDrag();
-}
-
-/**
- * 开始指针拖拽监听。
- * @param eventId 被拖动事件 ID
- * @param pointerEvent 指针事件
- */
-function startPointerDrag(eventId: string, pointerEvent: PointerEvent): void {
-  if (props.disabled) {
-    return;
-  }
-
-  pointerDragStartPoint.value = {
-    x: pointerEvent.clientX,
-    y: pointerEvent.clientY,
-  };
-  pointerDraggingEventId.value = eventId;
-  isPointerSorting.value = false;
-
-  window.addEventListener('pointermove', handlePointerMove, { passive: false });
-  window.addEventListener('pointerup', handlePointerUp, { passive: false });
-  window.addEventListener('pointercancel', handlePointerCancel);
-}
-
-/** 组件卸载时清理全局指针监听。 */
-onBeforeUnmount(() => {
-  resetPointerDrag();
-});
 </script>
 
 <template>
@@ -222,6 +64,7 @@ onBeforeUnmount(() => {
     </header>
 
     <div v-if="timeBlock" class="event-grid">
+      <!-- 事件卡片列表：直接转发原生 dnd 事件到 workbench -->
       <TimelineEventCard
         v-for="event in events"
         :key="event.id"
@@ -231,6 +74,7 @@ onBeforeUnmount(() => {
         :disabled="disabled"
         :dragging="draggingEventId === event.id"
         :drop-target="dragOverEventId === event.id"
+        :drop-placement="dragOverEventId === event.id ? eventDropPlacement : 'before'"
         @select="emit('selectEvent', $event)"
         @detail="emit('detailEvent', $event)"
         @delete="emit('deleteEvent', $event)"
@@ -238,7 +82,6 @@ onBeforeUnmount(() => {
         @draghover="(eventId, placement) => emit('hoverDropTarget', eventId, placement)"
         @drop="(eventId, placement) => emit('dropOn', eventId, placement)"
         @dragend="emit('resetDrag')"
-        @pointer-drag-start="startPointerDrag"
       />
 
       <n-empty

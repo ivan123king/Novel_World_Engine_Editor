@@ -195,12 +195,37 @@ function sortEventsByLayout(events: TimelineEvent[]): TimelineEvent[] {
   return [...events].sort((first, second) => first.layout.row - second.layout.row);
 }
 
+/** 在开发控制台输出当前某个时间块下所有事件的 row 顺序，用于调试拖拽重排。 */
+function debugPrintEventOrder(events: TimelineEvent[], timeBlockId: string, tag = ''): void {
+  const sameBlock = sortEventsByLayout(events.filter((event) => event.timeBlockId === timeBlockId));
+  console.log(
+    `[useTimelineWorkbench] ${tag} timeBlockId=${timeBlockId} 当前顺序(row→事件id):`,
+    sameBlock.map((event) => `row${event.layout.row}=${event.id}`).join(' , '),
+  );
+}
+
 /** 归一化指定时间块下事件顺序。 */
 function normalizeEventLayouts(events: TimelineEvent[], timeBlockId: string): TimelineEvent[] {
   const otherEvents = events.filter((event) => event.timeBlockId !== timeBlockId);
   const normalizedTargetEvents = events
     .filter((event) => event.timeBlockId === timeBlockId)
     .sort((first, second) => first.layout.row - second.layout.row)
+    .map((event, index) => ({
+      ...event,
+      layout: {
+        column: 1,
+        row: index + 1,
+      },
+    }));
+
+  return [...otherEvents, ...normalizedTargetEvents];
+}
+
+/** 按当前数组顺序归一化指定时间块下事件顺序，避免拖拽插入结果被旧 row 再次排序覆盖。 */
+function normalizeEventLayoutsByCurrentOrder(events: TimelineEvent[], timeBlockId: string): TimelineEvent[] {
+  const otherEvents = events.filter((event) => event.timeBlockId !== timeBlockId);
+  const normalizedTargetEvents = events
+    .filter((event) => event.timeBlockId === timeBlockId)
     .map((event, index) => ({
       ...event,
       layout: {
@@ -219,7 +244,10 @@ function moveEventNear(
   targetId: string,
   placement: TimelineEventDropPlacement,
 ): TimelineEvent[] {
+  console.log(`[useTimelineWorkbench] moveEventNear 调用: movedId=${movedId}, targetId=${targetId}, placement=${placement}`);
+
   if (movedId === targetId) {
+    console.log('[useTimelineWorkbench] moveEventNear 跳过: movedId 与 targetId 相同');
     return events;
   }
 
@@ -227,21 +255,38 @@ function moveEventNear(
   const targetEvent = events.find((event) => event.id === targetId);
 
   if (!movedEvent || !targetEvent || movedEvent.timeBlockId !== targetEvent.timeBlockId) {
+    console.log(
+      '[useTimelineWorkbench] moveEventNear 跳过: 找不到事件或不在同一时间块, movedEvent=',
+      !!movedEvent,
+      'targetEvent=',
+      !!targetEvent,
+      'sameBlock=',
+      movedEvent && targetEvent && movedEvent.timeBlockId === targetEvent.timeBlockId,
+    );
     return events;
   }
+
+  debugPrintEventOrder(events, movedEvent.timeBlockId, 'moveEventNear 之前');
 
   const sameTimeEvents = sortEventsByLayout(
     events.filter((event) => event.timeBlockId === movedEvent.timeBlockId && event.id !== movedId),
   );
   const targetIndex = sameTimeEvents.findIndex((event) => event.id === targetId);
   const insertIndex = placement === 'after' ? targetIndex + 1 : targetIndex;
+  console.log(
+    `[useTimelineWorkbench] moveEventNear: targetIndex=${targetIndex}, insertIndex=${insertIndex} (${placement})`,
+  );
 
   sameTimeEvents.splice(Math.max(0, insertIndex), 0, movedEvent);
 
-  return normalizeEventLayouts(
+  const resultEvents = normalizeEventLayoutsByCurrentOrder(
     [...events.filter((event) => event.timeBlockId !== movedEvent.timeBlockId), ...sameTimeEvents],
     movedEvent.timeBlockId,
   );
+
+  debugPrintEventOrder(resultEvents, movedEvent.timeBlockId, 'moveEventNear 之后');
+
+  return resultEvents;
 }
 
 /** 管理时间线页面数据、表单和拖拽状态。 */
@@ -863,10 +908,12 @@ export function useTimelineWorkbench() {
   /** 开始拖动事件卡片。 */
   function startEventDrag(eventId: string): void {
     if (isSaving.value || isLoading.value) {
+      console.log('[useTimelineWorkbench] startEventDrag 跳过: isSaving=', isSaving.value, 'isLoading=', isLoading.value);
       return;
     }
 
     draggingEventId.value = eventId;
+    console.log('[useTimelineWorkbench] startEventDrag 成功: draggingEventId =', draggingEventId.value);
   }
 
   /** 选中事件卡片。 */
@@ -883,10 +930,19 @@ export function useTimelineWorkbench() {
 
     dragOverEventId.value = eventId;
     eventDropPlacement.value = placement;
+    console.log('[useTimelineWorkbench] hoverEventDropTarget: dragOverEventId =', dragOverEventId.value, 'placement =', eventDropPlacement.value);
+  }
+
+  /** 清空事件拖放目标，但保持正在拖动的事件不变。 */
+  function clearEventDropTarget(): void {
+    console.log('[useTimelineWorkbench] clearEventDropTarget: 清空 dragOverEventId');
+    dragOverEventId.value = null;
+    eventDropPlacement.value = 'before';
   }
 
   /** 重置事件拖拽状态。 */
   function resetEventDrag(): void {
+    console.log('[useTimelineWorkbench] resetEventDrag: 清空 draggingEventId, dragOverEventId, eventDropPlacement');
     draggingEventId.value = null;
     dragOverEventId.value = null;
     eventDropPlacement.value = 'before';
@@ -896,9 +952,16 @@ export function useTimelineWorkbench() {
   async function dropEventOn(targetEventId: string, placement: TimelineEventDropPlacement): Promise<void> {
     const currentTimeline = selectedTimeline.value;
     const movedEventId = draggingEventId.value;
+    console.log(
+      '[useTimelineWorkbench] dropEventOn 调用: movedEventId =', movedEventId,
+      'targetEventId =', targetEventId,
+      'placement =', placement,
+      'currentTimeline存在? =', !!currentTimeline,
+    );
     resetEventDrag();
 
     if (!currentTimeline || !movedEventId || movedEventId === targetEventId) {
+      console.log('[useTimelineWorkbench] dropEventOn 提前 return: !timeline?=', !currentTimeline, '!movedEventId?=', !movedEventId, 'same?=', movedEventId === targetEventId);
       return;
     }
 
@@ -909,16 +972,21 @@ export function useTimelineWorkbench() {
     saveError.value = '';
 
     try {
-      await persistSelectedTimeline({
+      console.log('[useTimelineWorkbench] dropEventOn: 开始持久化保存...');
+      const savedTimeline = await persistSelectedTimeline({
         ...currentTimeline,
         events: nextEvents,
       });
       selectedEventId.value = movedEventId;
+      console.log('[useTimelineWorkbench] dropEventOn: 持久化保存成功, 保存后的时间线 events.length =', savedTimeline.events.length);
+      debugPrintEventOrder(savedTimeline.events, savedTimeline.timeBlocks[0]?.id ?? '', '保存完成后');
     } catch (error) {
+      console.error('[useTimelineWorkbench] dropEventOn: 持久化保存失败, error =', error);
       replaceTimeline(previousTimeline);
       saveError.value = formatError(error);
     } finally {
       isSaving.value = false;
+      console.log('[useTimelineWorkbench] dropEventOn: 处理结束, isSaving =', isSaving.value);
     }
   }
 
@@ -982,6 +1050,7 @@ export function useTimelineWorkbench() {
     deleteEvent,
     startEventDrag,
     hoverEventDropTarget,
+    clearEventDropTarget,
     resetEventDrag,
     dropEventOn,
   };
