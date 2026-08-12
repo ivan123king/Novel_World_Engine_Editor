@@ -15,6 +15,7 @@ const {
   plots,
   rootPlots,
   currentPlot,
+  inspectedPlot,
   breadcrumbPlots,
   childPlots,
   currentDescriptionBlocks,
@@ -34,6 +35,7 @@ const {
   hasErrorMessage,
   loadPlots,
   openPlot,
+  inspectPlot,
   updateCurrentPlotField,
   createRootPlot,
   createChildPlot,
@@ -271,6 +273,7 @@ onMounted(() => {
               class="child-node"
               :class="{
                 'is-dragging': draggingPlotId === plot.id,
+                'is-active': inspectedPlot?.id === plot.id,
                 'is-drop-target': dragOverPlotId === plot.id,
                 'is-drop-before': dragOverPlotId === plot.id && plotDropPlacement === 'before',
                 'is-drop-after': dragOverPlotId === plot.id && plotDropPlacement === 'after',
@@ -278,7 +281,8 @@ onMounted(() => {
               type="button"
               :disabled="isSaving"
               :draggable="!isSaving && !isLoading"
-              @click="openPlot(plot.id)"
+              @click="inspectPlot(plot.id)"
+              @dblclick="openPlot(plot.id)"
               @dragstart="startPlotDrag(plot.id)"
               @dragenter="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
               @dragover.prevent="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
@@ -300,22 +304,22 @@ onMounted(() => {
         </aside>
 
         <section class="plot-content-panel" aria-label="当前剧情内容">
-          <div v-if="currentPlot" class="plot-content">
-            <!-- 当前剧情简介区域。 -->
+          <div v-if="inspectedPlot" class="plot-content">
+            <!-- 右侧 Inspector 展示的剧情简介区域。 -->
             <div class="summary-block">
               <div class="summary-header">
                 <n-input
-                  :value="currentPlot.title"
+                  :value="inspectedPlot.title"
                   placeholder="剧情块名称"
                   @update:value="updateCurrentPlotField('title', $event)"
                 />
-                <n-button type="error" :disabled="isSaving" @click="deletePlot(currentPlot.id)">
+                <n-button type="error" :disabled="isSaving" @click="deletePlot(inspectedPlot.id)">
                   删除剧情块
                 </n-button>
               </div>
 
               <n-input
-                :value="currentPlot.summary"
+                :value="inspectedPlot.summary"
                 type="textarea"
                 placeholder="剧情简介"
                 :autosize="{ minRows: 3, maxRows: 6 }"
@@ -351,7 +355,7 @@ onMounted(() => {
                 @dragend="resetDescriptionDrag"
                 @contextmenu="openContextMenu($event, {
                   targetType: 'descriptionCard',
-                  plotId: currentPlot.id,
+                  plotId: inspectedPlot.id,
                   descriptionId: description.id,
                 })"
               >
@@ -552,6 +556,7 @@ onMounted(() => {
 
 .root-block:hover,
 .root-block.is-active,
+.child-node.is-active,
 .child-node:hover {
   background: #eef6ff;
   border-color: #7aa7d9;

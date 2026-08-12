@@ -205,6 +205,7 @@ function formatError(error: unknown): string {
 export function usePlotLibrary() {
   const plots = ref<PlotFile[]>([]);
   const currentPlotId = ref<string | null>(null);
+  const inspectedPlotId = ref<string | null>(null);
   const saveMessage = ref('');
   const errorMessage = ref('');
   const fileErrors = ref<string[]>([]);
@@ -226,6 +227,15 @@ export function usePlotLibrary() {
     () => plots.value.find((plot) => plot.id === currentPlotId.value) ?? null,
   );
 
+  /** 右侧 Inspector 当前展示的剧情块，支持子剧情单击预览。 */
+  const inspectedPlot = computed(() => {
+    if (inspectedPlotId.value) {
+      return plots.value.find((plot) => plot.id === inspectedPlotId.value) ?? currentPlot.value;
+    }
+
+    return currentPlot.value;
+  });
+
   const breadcrumbPlots = computed(() => resolveBreadcrumb(currentPlotId.value, plots.value));
 
   const childPlots = computed(() => {
@@ -237,7 +247,7 @@ export function usePlotLibrary() {
   });
 
   const currentDescriptionBlocks = computed(() =>
-    [...(currentPlot.value?.descriptionBlocks ?? [])].sort(sortDescriptionsByOrder),
+    [...(inspectedPlot.value?.descriptionBlocks ?? [])].sort(sortDescriptionsByOrder),
   );
 
   const hasRootPlots = computed(() => rootPlots.value.length > 0);
@@ -289,14 +299,20 @@ export function usePlotLibrary() {
       dataDirectory.value = result.baseDir;
 
       if (currentPlotId.value && plots.value.some((plot) => plot.id === currentPlotId.value)) {
+        if (!inspectedPlotId.value || !plots.value.some((plot) => plot.id === inspectedPlotId.value)) {
+          inspectedPlotId.value = currentPlotId.value;
+        }
+
         return;
       }
 
       currentPlotId.value = rootPlots.value[0]?.id ?? plots.value[0]?.id ?? null;
+      inspectedPlotId.value = currentPlotId.value;
     } catch (error) {
       plots.value = [];
       fileErrors.value = [];
       currentPlotId.value = null;
+      inspectedPlotId.value = null;
       errorMessage.value = formatError(error);
     } finally {
       isLoading.value = false;
@@ -310,13 +326,25 @@ export function usePlotLibrary() {
     }
 
     currentPlotId.value = plotId;
+    inspectedPlotId.value = plotId;
     saveMessage.value = '';
     errorMessage.value = '';
   }
 
-  /** 更新当前剧情块的基础字段，并保存对应 JSON 文件。 */
+  /** 只切换右侧 Inspector 展示的剧情块，不改变当前剧情层级。 */
+  function inspectPlot(plotId: string): void {
+    if (!plots.value.some((plot) => plot.id === plotId)) {
+      return;
+    }
+
+    inspectedPlotId.value = plotId;
+    saveMessage.value = '';
+    errorMessage.value = '';
+  }
+
+  /** 更新右侧 Inspector 展示剧情块的基础字段，并保存对应 JSON 文件。 */
   function updateCurrentPlotField(field: 'title' | 'summary', value: string): void {
-    const plotId = currentPlot.value?.id;
+    const plotId = inspectedPlot.value?.id;
 
     if (!plotId) {
       return;
@@ -353,6 +381,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
+    inspectedPlotId.value = savedPlot.id;
     // saveMessage.value = '已创建一级剧情块。';
   }
 
@@ -373,6 +402,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
+    inspectedPlotId.value = savedPlot.id;
     // saveMessage.value = '已创建子剧情。';
   }
 
@@ -394,6 +424,7 @@ export function usePlotLibrary() {
 
     plots.value = [...plots.value, savedPlot];
     currentPlotId.value = savedPlot.id;
+    inspectedPlotId.value = savedPlot.id;
     // saveMessage.value = '已创建同级剧情。';
   }
 
@@ -428,6 +459,7 @@ export function usePlotLibrary() {
       currentPlotId.value =
         (parentId && plots.value.some((plot) => plot.id === parentId) ? parentId : rootPlots.value[0]?.id) ??
         null;
+      inspectedPlotId.value = currentPlotId.value;
       saveMessage.value = `已删除 ${deletedIds.size} 个剧情块。`;
       errorMessage.value = '';
     } catch (error) {
@@ -437,8 +469,8 @@ export function usePlotLibrary() {
     }
   }
 
-  /** 创建当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
-  async function createDescriptionBlock(plotId = currentPlot.value?.id ?? ''): Promise<void> {
+  /** 创建右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
+  async function createDescriptionBlock(plotId = inspectedPlot.value?.id ?? ''): Promise<void> {
     const targetPlot = plots.value.find((plot) => plot.id === plotId);
 
     if (!targetPlot) {
@@ -461,16 +493,16 @@ export function usePlotLibrary() {
     }
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
-    currentPlotId.value = savedPlot.id;
+    inspectedPlotId.value = savedPlot.id;
     // saveMessage.value = '已新增说明卡片。';
   }
 
-  /** 更新当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
+  /** 更新右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
   function updateDescriptionBlock(
     descriptionId: string,
     patch: Partial<Pick<PlotDescriptionBlock, 'title' | 'content'>>,
   ): void {
-    const plotId = currentPlot.value?.id;
+    const plotId = inspectedPlot.value?.id;
 
     if (!plotId) {
       return;
@@ -503,10 +535,10 @@ export function usePlotLibrary() {
     }
   }
 
-  /** 删除当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
+  /** 删除右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
   async function deleteDescriptionBlock(descriptionId: string): Promise<void> {
-    const plotId = currentPlot.value?.id;
-    const targetPlot = currentPlot.value;
+    const plotId = inspectedPlot.value?.id;
+    const targetPlot = inspectedPlot.value;
 
     if (!plotId || !targetPlot) {
       return;
@@ -528,12 +560,12 @@ export function usePlotLibrary() {
     // saveMessage.value = '已删除说明卡片。';
   }
 
-  /** 上下移动当前剧情块内的说明卡片，并保存当前剧情块 JSON 文件。 */
+  /** 上下移动右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
   async function moveDescriptionBlock(
     descriptionId: string,
     direction: 'up' | 'down',
   ): Promise<void> {
-    const targetPlot = currentPlot.value;
+    const targetPlot = inspectedPlot.value;
 
     if (!targetPlot) {
       return;
@@ -593,11 +625,11 @@ export function usePlotLibrary() {
     const movedDescriptionId = draggingDescriptionId.value;
     resetDescriptionDrag();
 
-    if (!movedDescriptionId || movedDescriptionId === targetDescriptionId || !currentPlot.value) {
+    if (!movedDescriptionId || movedDescriptionId === targetDescriptionId || !inspectedPlot.value) {
       return;
     }
 
-    const descriptions = normalizeDescriptionOrder([...currentPlot.value.descriptionBlocks]);
+    const descriptions = normalizeDescriptionOrder([...inspectedPlot.value.descriptionBlocks]);
     const sourceIndex = descriptions.findIndex((description) => description.id === movedDescriptionId);
     const targetIndex = descriptions.findIndex((description) => description.id === targetDescriptionId);
 
@@ -609,7 +641,7 @@ export function usePlotLibrary() {
     descriptions.splice(targetIndex, 0, movedDescription);
 
     const nextPlot: PlotFile = {
-      ...currentPlot.value,
+      ...inspectedPlot.value,
       descriptionBlocks: descriptions.map((description, index) => ({
         ...description,
         order: index,
@@ -688,6 +720,7 @@ export function usePlotLibrary() {
 
     plots.value = nextPlots;
     currentPlotId.value = movedPlotId;
+    inspectedPlotId.value = movedPlotId;
     isSaving.value = true;
     saveMessage.value = '';
     errorMessage.value = '';
@@ -711,7 +744,7 @@ export function usePlotLibrary() {
     action: PlotContextMenuAction,
     target: PlotContextTarget,
   ): Promise<void> {
-    const targetPlotId = target.plotId ?? currentPlot.value?.id ?? '';
+    const targetPlotId = target.plotId ?? inspectedPlot.value?.id ?? currentPlot.value?.id ?? '';
 
     if (action === 'openPlot' && targetPlotId) {
       openPlot(targetPlotId);
@@ -729,7 +762,7 @@ export function usePlotLibrary() {
     }
 
     if (action === 'renamePlot' && targetPlotId) {
-      openPlot(targetPlotId);
+      inspectPlot(targetPlotId);
       saveMessage.value = '可在右侧内容区直接修改剧情块名称。';
       return;
     }
@@ -768,6 +801,7 @@ export function usePlotLibrary() {
     plots,
     rootPlots,
     currentPlot,
+    inspectedPlot,
     breadcrumbPlots,
     childPlots,
     currentDescriptionBlocks,
@@ -788,6 +822,7 @@ export function usePlotLibrary() {
     hasErrorMessage,
     loadPlots,
     openPlot,
+    inspectPlot,
     updateCurrentPlotField,
     createRootPlot,
     createChildPlot,
