@@ -4,10 +4,13 @@ import type {
   CharacterFile,
   CurrentProject,
   ItemFile,
+  ListOrderFile,
   LocationFile,
   MapFile,
   PlotFile,
   RelationGraphFile,
+  TimelineFile,
+  TimelineIndexFile,
 } from './src/types';
 
 declare global {
@@ -63,6 +66,20 @@ declare global {
     errors: string[];
   }
 
+  /** 时间线模块读取结果，和 preload 暴露的数据结构保持一致。 */
+  interface TimelineModuleResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 时间线索引文件。 */
+    index: TimelineIndexFile;
+    /** 已成功读取的时间线列表。 */
+    timelines: TimelineFile[];
+    /** 每条时间线的时间块排序元数据，key 为时间线 ID。 */
+    timeBlockOrders: Record<string, ListOrderFile>;
+    /** 单个文件或排序元数据读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
   interface Window {
     novelEngine: {
       getAppInfo: () => Promise<{
@@ -105,6 +122,18 @@ declare global {
         nodeIds: string[],
         baseDirPath?: string,
       ) => Promise<void>;
+      listTimelineModule: (baseDirPath?: string) => Promise<TimelineModuleResult>;
+      saveTimelineIndex: (
+        index: TimelineIndexFile,
+        baseDirPath?: string,
+      ) => Promise<TimelineIndexFile>;
+      saveTimeline: (timeline: TimelineFile, baseDirPath?: string) => Promise<TimelineFile>;
+      deleteTimeline: (timelineId: string, baseDirPath?: string) => Promise<void>;
+      saveTimelineTimeBlockOrder: (
+        timelineId: string,
+        timeBlockIds: string[],
+        baseDirPath?: string,
+      ) => Promise<ListOrderFile>;
     };
   }
 }

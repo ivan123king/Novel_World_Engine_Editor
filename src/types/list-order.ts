@@ -2,7 +2,7 @@
 export const LIST_ORDER_SCHEMA_VERSION = 1;
 
 /** 支持保存用户自定义列表顺序的实体类型。 */
-export type ListOrderEntityType = 'characters' | 'items';
+export type ListOrderEntityType = 'characters' | 'items' | 'timeline-time-blocks';
 
 /**
  * 列表排序元数据文件结构。
@@ -37,7 +37,7 @@ export function createListOrderFile(
 
 /**
  * 判断未知数据是否满足列表排序元数据结构。
- * 排序文件只接受 characters/items 两类，避免其他文件误用同一格式。
+ * 排序文件只接受已登记实体类型，避免其他文件误用同一格式。
  */
 export function isListOrderFile(value: unknown): value is ListOrderFile {
   if (typeof value !== 'object' || value === null) {
@@ -47,7 +47,9 @@ export function isListOrderFile(value: unknown): value is ListOrderFile {
   const data = value as Partial<ListOrderFile>;
 
   return (
-    (data.entityType === 'characters' || data.entityType === 'items') &&
+    (data.entityType === 'characters' ||
+      data.entityType === 'items' ||
+      data.entityType === 'timeline-time-blocks') &&
     Array.isArray(data.ids) &&
     data.ids.every((id) => typeof id === 'string') &&
     data.schemaVersion === LIST_ORDER_SCHEMA_VERSION

@@ -31,6 +31,13 @@ import {
   saveRelationGraphBlockOrder,
   saveRelationGraphOrder,
 } from './relations/relation-graph-service';
+import {
+  deleteTimelineFile,
+  listTimelineModule,
+  saveTimeline,
+  saveTimelineIndex,
+  saveTimelineTimeBlockOrder,
+} from './timeline/timeline-service';
 import { installNovelMenu } from './menu/novel-menu';
 import {
   createProjectFromMenu,
@@ -224,6 +231,28 @@ ipcMain.handle(
   'relations:save-block-order',
   (_event, graphId: string, nodeIds: string[], baseDirPath?: string) =>
     saveRelationGraphBlockOrder(graphId, nodeIds, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('timelines:list-module', (_event, baseDirPath?: string) =>
+  listTimelineModule(resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('timelines:save-index', (_event, index, baseDirPath?: string) =>
+  saveTimelineIndex(index, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('timelines:save', (_event, timeline, baseDirPath?: string) =>
+  saveTimeline(timeline, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('timelines:delete', (_event, timelineId: string, baseDirPath?: string) =>
+  deleteTimelineFile(timelineId, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle(
+  'timelines:save-time-block-order',
+  (_event, timelineId: string, timeBlockIds: string[], baseDirPath?: string) =>
+    saveTimelineTimeBlockOrder(timelineId, timeBlockIds, resolveCurrentProjectDirectory(baseDirPath)),
 );
 
 app.whenReady().then(() => {

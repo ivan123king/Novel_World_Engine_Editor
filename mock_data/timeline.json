@@ -1,1 +1,143 @@
-[]
+{
+  "index": {
+    "activeTimelineId": "timeline_main",
+    "timelines": [
+      {
+        "id": "timeline_main",
+        "name": "主线时间线"
+      },
+      {
+        "id": "timeline_war",
+        "name": "北境战争线"
+      }
+    ],
+    "schemaVersion": 1
+  },
+  "timeBlockOrders": {
+    "timeline_main": {
+      "entityType": "timeline-time-blocks",
+      "ids": ["time_202_02", "time_202", "time_yuan"],
+      "schemaVersion": 1
+    },
+    "timeline_war": {
+      "entityType": "timeline-time-blocks",
+      "ids": ["time_war_first_battle", "time_war_start"],
+      "schemaVersion": 1
+    }
+  },
+  "timelines": [
+    {
+      "id": "timeline_main",
+      "name": "主线时间线",
+      "timeBlocks": [
+        {
+          "id": "time_yuan",
+          "name": "元年",
+          "aliases": ["大周开国元年"]
+        },
+        {
+          "id": "time_202",
+          "name": "公元202年",
+          "aliases": ["大周历23年"]
+        },
+        {
+          "id": "time_202_02",
+          "name": "公元202年2月",
+          "aliases": ["春猎前"]
+        }
+      ],
+      "events": [
+        {
+          "id": "event_border_mutiny",
+          "timeBlockId": "time_202",
+          "specificTime": "3月初",
+          "title": "边境军变",
+          "content": "北境守军发生哗变，粮草失踪和军饷克扣同时爆出。主角被迫进入军营调查，第一次发现朝堂派系已经把手伸向边军。",
+          "layout": {
+            "row": 2,
+            "column": 1
+          },
+          "customFields": {
+            "人物": ["林辰", "苏琴"],
+            "地点": "北境军营",
+            "剧情线": "边境军权",
+            "影响": {
+              "朝堂": "开始关注北境",
+              "林辰": "获得第一次军方声望"
+            }
+          },
+          "schemaVersion": 1
+        },
+        {
+          "id": "event_court_debate",
+          "timeBlockId": "time_202",
+          "specificTime": "3月中",
+          "title": "朝堂争辩",
+          "content": "御史台借边境军变发难，要求追查军饷流向。赵相一派试图把责任推给地方官，皇帝暂时压下结论。",
+          "layout": {
+            "row": 1,
+            "column": 1
+          },
+          "customFields": {
+            "人物": ["赵相", "皇帝"],
+            "地点": "大周朝堂",
+            "剧情线": "朝堂盐税"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "id": "event_spring_hunt_invite",
+          "timeBlockId": "time_202_02",
+          "specificTime": "上旬",
+          "title": "春猎邀约",
+          "content": "苏琴收到春猎邀约，发现名单里出现了不该在京城的人。她开始怀疑边境军变和京城贵族有关。",
+          "layout": {
+            "row": 1,
+            "column": 1
+          },
+          "customFields": {
+            "人物": ["苏琴"],
+            "线索": "异常名单"
+          },
+          "schemaVersion": 1
+        }
+      ],
+      "schemaVersion": 1
+    },
+    {
+      "id": "timeline_war",
+      "name": "北境战争线",
+      "timeBlocks": [
+        {
+          "id": "time_war_start",
+          "name": "北境战前",
+          "aliases": ["边军整备期"]
+        },
+        {
+          "id": "time_war_first_battle",
+          "name": "第一次会战",
+          "aliases": []
+        }
+      ],
+      "events": [
+        {
+          "id": "event_supply_check",
+          "timeBlockId": "time_war_start",
+          "specificTime": "战前十日",
+          "title": "清点粮草",
+          "content": "军需官发现账面粮草和实物相差三成，旧账被人重新誊写过。",
+          "layout": {
+            "row": 1,
+            "column": 1
+          },
+          "customFields": {
+            "地点": "北境粮仓",
+            "疑点": "账册被替换"
+          },
+          "schemaVersion": 1
+        }
+      ],
+      "schemaVersion": 1
+    }
+  ]
+}

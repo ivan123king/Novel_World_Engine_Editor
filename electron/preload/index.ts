@@ -8,6 +8,8 @@ import type {
   MapFile,
   PlotFile,
   RelationGraphFile,
+  TimelineFile,
+  TimelineIndexFile,
 } from '../../src/types';
 
 /**
@@ -80,4 +82,18 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('relations:save-graph-order', graphIds, baseDirPath),
   saveRelationGraphBlockOrder: (graphId: string, nodeIds: string[], baseDirPath?: string) =>
     ipcRenderer.invoke('relations:save-block-order', graphId, nodeIds, baseDirPath),
+
+  //时间线模块
+  listTimelineModule: (baseDirPath?: string) => ipcRenderer.invoke('timelines:list-module', baseDirPath),
+  saveTimelineIndex: (index: TimelineIndexFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('timelines:save-index', index, baseDirPath),
+  saveTimeline: (timeline: TimelineFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('timelines:save', timeline, baseDirPath),
+  deleteTimeline: (timelineId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('timelines:delete', timelineId, baseDirPath),
+  saveTimelineTimeBlockOrder: (
+    timelineId: string,
+    timeBlockIds: string[],
+    baseDirPath?: string,
+  ) => ipcRenderer.invoke('timelines:save-time-block-order', timelineId, timeBlockIds, baseDirPath),
 });

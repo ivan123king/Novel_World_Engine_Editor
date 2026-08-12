@@ -13,9 +13,18 @@ data/
   list-orders/
     characters.json
     items.json
+    timeline_main_time_blocks.json
 ```
 
 不要把列表顺序写入 `customFields`，也不要为了排序给人物或物品增加题材固定字段。
+
+时间线时间块这类需要按父对象拆分的排序文件，仍然复用同一结构，只是文件名带上父对象 ID，例如：
+
+```text
+list-orders/{timelineId}_time_blocks.json
+```
+
+不要为时间线时间块单独实现第二套排序服务。
 
 ## 文件结构
 
@@ -27,7 +36,7 @@ data/
 }
 ```
 
-- `entityType`：当前支持 `characters` 和 `items`。
+- `entityType`：当前支持 `characters`、`items` 和 `timeline-time-blocks`。
 - `ids`：实体 ID 的展示顺序。
 - `schemaVersion`：排序元数据结构版本。
 
@@ -54,9 +63,20 @@ Characters.vue / Items.vue
   -> electron/main/file-system/json-file-store.ts
 ```
 
+时间线时间块排序调用链：
+
+```text
+Timeline.vue
+  -> src/views/timeline/useTimelineWorkbench.ts
+  -> src/api/timelineApi.ts
+  -> electron/preload/index.ts
+  -> electron/main/timeline/timeline-service.ts
+  -> electron/main/list-order/list-order-service.ts
+```
+
 ## 维护规则
 
 - Vue 组件不能直接访问文件系统。
 - 排序元数据必须可读、可版本管理、可手动恢复。
 - 排序不应改变人物、物品文件自身的 `schemaVersion`。
-- 后续地点、事件等模块需要排序时，应复用同一排序元数据服务，而不是为每个模块重复实现一套文件格式。
+- 后续地点、事件、时间线时间块等模块需要排序时，应复用同一排序元数据服务，而不是为每个模块重复实现一套文件格式。

@@ -31,6 +31,7 @@ import {
   NScrollbar,
   NCode,
   NDropdown,
+  NSelect,
 } from 'naive-ui';
 import App from './App.vue';
 import { router } from './router';
@@ -67,6 +68,7 @@ const naive = create({
     NScrollbar,
     NCode,
     NDropdown,
+    NSelect,
   ],
 });
 
