@@ -77,7 +77,6 @@ function handleDragStart(event: DragEvent, eventId: string): void {
     return;
   }
 
-  console.log('[TimelineEventCard] handleDragStart 成功: eventId=', eventId, 'effectAllowed=', dt.effectAllowed);
   emit('dragstart', eventId);
 }
 
@@ -134,14 +133,6 @@ function handleDrop(dragEvent: DragEvent): void {
   dragEvent.stopPropagation();
 
   const placement = resolveDropPlacement(dragEvent);
-  const transferId = dragEvent.dataTransfer?.getData('text/plain') ?? null;
-
-  console.log(
-    '[TimelineEventCard] handleDrop 成功: on=', props.event.id,
-    'placement=', placement,
-    'dataTransfer.id=', transferId,
-  );
-
   emit('drop', props.event.id, placement);
 }
 </script>
@@ -159,17 +150,11 @@ function handleDrop(dragEvent: DragEvent): void {
     }"
     :draggable="!disabled"
     @click="emit('select', event.id)"
-    @dragstart="(e) => {
-      console.log('[TimelineEventCard] ① dragstart 触发:', event.id, '有 dataTransfer:', !!e.dataTransfer);
-      handleDragStart(e, event.id);
-    }"
+    @dragstart="handleDragStart($event, event.id)"
     @dragenter="handleDragOver"
     @dragover="handleDragOver"
     @drop="handleDrop"
-    @dragend="() => {
-      console.log('[TimelineEventCard] ④ dragend 触发:', event.id);
-      emit('dragend');
-    }"
+    @dragend="emit('dragend')"
   >
     <div class="event-main">
       <h4 class="event-title">{{ event.title || '未命名事件' }}</h4>
