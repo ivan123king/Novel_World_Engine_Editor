@@ -2,11 +2,13 @@
 
 ## 通信方式
 
-小说工具 A 与 Novel AI 服务 B 第一阶段通过 HTTP REST API 通信。
+小说工具 A 与远程AI小助手服务第一阶段通过 HTTP REST API 通信。
 
 AI 对话后续建议使用 SSE 返回流式结果。
 
 第一阶段不使用 Electron IPC 作为 A/B 的主要通信方式。
+
+Electron IPC 只用于 A 工程内部能力，例如 renderer 读取和保存 `data/system/app-settings.json` 中的 AI 设置。
 
 ## API 前缀
 
@@ -15,6 +17,17 @@ AI 对话后续建议使用 SSE 返回流式结果。
 ```text
 /api/v1
 ```
+
+远程服务地址必须由用户配置为完整 HTTP 地址，例如：
+
+```text
+http://127.0.0.1:7860
+https://ai.example.com
+```
+
+A 工程拼接接口地址时必须基于该绝对地址构造 URL，不能把用户输入当成当前 renderer 页面的相对路径。
+
+所有远程 HTTP 调用暂定 5 秒超时。
 
 ## 基础接口
 
@@ -28,9 +41,19 @@ POST /chat
 POST /search
 ```
 
+## A 工程当前需要调用的接口
+
+当前 A 工程的 AI小助手页面至少需要调用：
+
+- `GET /health`：设置弹框内检测远程服务是否可用；注册、同步、聊天前也可用于确认服务状态。
+- `POST /projects/register`：将当前打开的小说项目注册到远程AI小助手服务。
+- `POST /projects/{projectId}/sync`：同步当前小说项目，让远程AI小助手服务更新索引。
+
+`POST /chat` 和 `POST /search` 后续再接入真实 AI 聊天和搜索。
+
 ## 项目注册
 
-A 打开小说项目后，可以向 B 注册当前项目。
+A 打开小说项目后，可以向远程AI小助手服务注册当前项目。
 
 注册信息至少包含：
 
@@ -41,7 +64,7 @@ A 打开小说项目后，可以向 B 注册当前项目。
 }
 ```
 
-B 返回：
+远程AI小助手服务返回：
 
 ```json
 {
@@ -52,7 +75,7 @@ B 返回：
 
 ## Chat API
 
-A 向 B 发送：
+A 向远程AI小助手服务发送：
 
 ```json
 {
@@ -62,7 +85,7 @@ A 向 B 发送：
 }
 ```
 
-B 内部流程：
+远程AI小助手服务内部流程：
 
 ```text
 用户问题
@@ -80,7 +103,7 @@ B 内部流程：
 返回结果
 ```
 
-B 返回结果建议包含回答内容和引用来源：
+远程AI小助手服务返回结果建议包含回答内容和引用来源：
 
 ```json
 {
@@ -113,6 +136,6 @@ snippet
 
 ## LLM Key 边界
 
-B 负责保存和处理 LLM API Key。
+远程AI小助手服务负责保存和处理 LLM API Key。
 
 A 不保存 LLM API Key，也不直接调用 OpenAI、Claude、Gemini、DeepSeek、Qwen 或本地模型。

@@ -1,5 +1,9 @@
 {
   "lastOpenedProjectPath": "E:\\tmp\\我的第一本",
-  "updatedAt": "2026-08-11T01:19:07.831Z",
-  "schemaVersion": 1
+  "updatedAt": "2026-08-13T02:30:52.978Z",
+  "schemaVersion": 1,
+  "aiAssistant": {
+    "remoteServiceBaseUrl": "https://wwww",
+    "remoteProjectId": ""
+  }
 }

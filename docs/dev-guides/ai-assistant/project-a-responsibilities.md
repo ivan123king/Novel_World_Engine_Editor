@@ -13,8 +13,8 @@ A 是本地优先的 Electron + Vue3 + TypeScript 小说世界引擎编辑器，
 - 人物、物品、地点、地图、剧情、时间线、人物关系等模块。
 - 小说正文和章节元数据管理。
 - AI小助手界面。
-- AI 服务地址配置和连接状态展示。
-- 调用 Novel AI 服务 B 的 HTTP API。
+- 远程AI小助手服务地址配置和连接状态展示。
+- 调用远程AI小助手服务的 HTTP API。
 - 展示 B 返回的 AI 回复、搜索结果和引用来源。
 - 展示 AI 建议变更 Diff，并在用户确认后执行 JSON 修改。
 
@@ -35,10 +35,16 @@ A 是本地优先的 Electron + Vue3 + TypeScript 小说世界引擎编辑器，
 
 - AI小助手聊天室入口。
 - 后续会挂载的数据范围展示。
+- AI 设置按钮和远程AI小助手服务地址设置弹框。
+- 远程服务地址保存到 `data/system/app-settings.json` 的 `aiAssistant.remoteServiceBaseUrl`。
+- 远程项目 ID 保存到 `data/system/app-settings.json` 的 `aiAssistant.remoteProjectId`。
+- 检测按钮调用 `/health`。
+- 注册按钮调用 `/projects/register`。
+- 同步按钮调用 `/projects/{projectId}/sync`。
 - 用户发送消息后的固定占位回复。
+- 未设置远程服务地址或远程服务不可用时，聊天区提示用户先设置 AI 服务地址。
 - 不调用真实 AI。
 - 不修改小说 JSON。
-- 不新增 Electron IPC。
 
 后续接入 B 时，A 应保持页面职责简单：收集用户输入、携带当前项目身份、调用 B、展示回复和来源。
 
@@ -49,13 +55,13 @@ A 是本地优先的 Electron + Vue3 + TypeScript 小说世界引擎编辑器，
     ↓
 A 保存当前项目状态
     ↓
-A 检测 B 是否在线
+A 检测远程AI小助手服务是否在线
     ↓
-A 注册或同步当前项目到 B
+A 注册或同步当前项目到远程AI小助手服务
     ↓
 用户在 AI小助手输入消息
     ↓
-A 调用 B 的 Chat API
+A 调用远程AI小助手服务的 Chat API
     ↓
 A 展示 AI 回复和引用来源
 ```
@@ -64,4 +70,4 @@ A 展示 AI 回复和引用来源
 
 A 是唯一可以写入小说项目 JSON 的工程。
 
-如果 B 返回 AI 修改建议，A 必须先展示 Diff，由用户确认后再写入。禁止因为 AI 返回内容就自动修改 JSON。
+如果远程AI小助手服务返回 AI 修改建议，A 必须先展示 Diff，由用户确认后再写入。禁止因为 AI 返回内容就自动修改 JSON。

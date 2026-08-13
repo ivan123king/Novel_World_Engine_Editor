@@ -38,6 +38,11 @@ import {
   saveTimelineIndex,
   saveTimelineTimeBlockOrder,
 } from './timeline/timeline-service';
+import {
+  loadAiAssistantSettings,
+  saveRemoteAiAssistantProjectId,
+  saveRemoteAiAssistantServiceBaseUrl,
+} from './system/app-settings-service';
 import { installNovelMenu } from './menu/novel-menu';
 import {
   createProjectFromMenu,
@@ -159,6 +164,16 @@ ipcMain.handle('projects:open', async () => {
 
   return project;
 });
+
+ipcMain.handle('ai-assistant:settings-load', () => loadAiAssistantSettings());
+
+ipcMain.handle('ai-assistant:service-url-save', (_event, baseUrl: string) =>
+  saveRemoteAiAssistantServiceBaseUrl(baseUrl),
+);
+
+ipcMain.handle('ai-assistant:remote-project-id-save', (_event, remoteProjectId: string) =>
+  saveRemoteAiAssistantProjectId(remoteProjectId),
+);
 
 ipcMain.handle('characters:list', (_event, baseDirPath?: string) =>
   listCharacters(resolveCurrentProjectDirectory(baseDirPath)),

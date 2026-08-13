@@ -1,5 +1,11 @@
 export type { JsonObject, JsonPrimitive, JsonValue } from './json-value';
 export {
+  createEmptyAiAssistantSettings,
+  isAiAssistantSettings,
+  type AiAssistantSettings,
+  type RemoteAiAssistantHealthStatus,
+} from './ai-assistant';
+export {
   CHARACTER_SCHEMA_VERSION,
   createEmptyCharacter,
   getCharacterCustomFieldEntries,

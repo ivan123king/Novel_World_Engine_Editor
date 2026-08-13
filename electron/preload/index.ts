@@ -3,6 +3,7 @@ import type { IpcRendererEvent } from 'electron';
 import type {
   CharacterFile,
   CurrentProject,
+  AiAssistantSettings,
   ItemFile,
   LocationFile,
   MapFile,
@@ -24,6 +25,12 @@ contextBridge.exposeInMainWorld('novelEngine', {
   restoreLastOpenedProject: () => ipcRenderer.invoke('projects:restore-last-opened'),
   createProject: () => ipcRenderer.invoke('projects:create'),
   openProject: () => ipcRenderer.invoke('projects:open'),
+  loadAiAssistantSettings: () =>
+    ipcRenderer.invoke('ai-assistant:settings-load') as Promise<AiAssistantSettings>,
+  saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) =>
+    ipcRenderer.invoke('ai-assistant:service-url-save', baseUrl) as Promise<AiAssistantSettings>,
+  saveRemoteAiAssistantProjectId: (remoteProjectId: string) =>
+    ipcRenderer.invoke('ai-assistant:remote-project-id-save', remoteProjectId) as Promise<AiAssistantSettings>,
   onCurrentProjectChanged: (listener: (project: CurrentProject | null) => void) => {
     const channelListener = (_event: IpcRendererEvent, project: CurrentProject | null) => {
       listener(project);

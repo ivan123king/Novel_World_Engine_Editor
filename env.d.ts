@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type {
+  AiAssistantSettings,
   CharacterFile,
   CurrentProject,
   ItemFile,
@@ -91,6 +92,9 @@ declare global {
       restoreLastOpenedProject: () => Promise<CurrentProject | null>;
       createProject: () => Promise<CurrentProject | null>;
       openProject: () => Promise<CurrentProject | null>;
+      loadAiAssistantSettings: () => Promise<AiAssistantSettings>;
+      saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) => Promise<AiAssistantSettings>;
+      saveRemoteAiAssistantProjectId: (remoteProjectId: string) => Promise<AiAssistantSettings>;
       onCurrentProjectChanged: (
         listener: (project: CurrentProject | null) => void,
       ) => () => void;

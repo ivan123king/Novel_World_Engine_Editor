@@ -1,10 +1,17 @@
 <script setup lang="ts">
 /**
  * AI小助手模块视图。
- * 当前阶段只提供预留聊天室界面，不接入真实 AI 服务，也不读取或写入小说 JSON 数据。
+ * 当前阶段提供远程AI小助手服务设置、健康检查、项目注册、项目同步和预留聊天室界面。
  */
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import AppModal from '@/components/common/AppModal.vue';
+import {
+  loadAiAssistantSettings,
+  saveRemoteAiAssistantProjectId,
+  saveRemoteAiAssistantServiceBaseUrl,
+} from '@/api/aiAssistantSettingsApi';
 import { useProjectStore } from '@/stores/projectStore';
+import type { RemoteAiAssistantHealthStatus } from '@/types';
 
 /** 聊天消息的发送方。 */
 type ChatMessageRole = 'assistant' | 'user';
@@ -16,32 +23,54 @@ interface ChatMessage {
   content: string;
 }
 
-/** 小助手后续计划挂载的小说数据范围。 */
-const attachedDataTypes = [
-  '当前小说项目',
-  '世界状态',
-  '人物设定',
-  '物品道具',
-  '地点与地图',
-  '剧情库',
-  '时间线',
-  '人物关系',
-];
-
-/** 小助手预留能力列表。 */
-const plannedCapabilities = [
-  '根据当前打开的小说设定回答问题',
-  '搜索人物、物品、地点、剧情和时间线设定',
-  '根据自然语言指令生成写作建议',
-  '按设定生成简短连贯的剧情参考',
-  '未来只以建议变更形式提出数据修改',
-];
+/** 远程AI小助手服务注册项目的响应结构。 */
+interface RegisterProjectResponse {
+  projectId?: string;
+  id?: string;
+  status?: string;
+}
 
 const projectStore = useProjectStore();
-const { currentProjectTitle, hasCurrentProject } = projectStore;
+const { currentProject, currentProjectTitle, currentProjectPath, hasCurrentProject } = projectStore;
+
+/** 远程AI小助手服务基础地址。 */
+const remoteServiceBaseUrl = ref('');
+
+/** 当前小说项目在远程AI小助手服务中的项目 ID。 */
+const remoteProjectId = ref('');
+
+/** 设置弹框内正在编辑的服务地址。 */
+const settingFormBaseUrl = ref('');
 
 /** 用户当前输入内容。 */
 const inputText = ref('');
+
+/** 设置弹框是否打开。 */
+const isSettingsModalOpen = ref(false);
+
+/** 设置读取状态。 */
+const isLoadingSettings = ref(false);
+
+/** 设置保存状态。 */
+const isSavingSettings = ref(false);
+
+/** 设置弹框内的健康检查状态。 */
+const settingHealthStatus = ref<RemoteAiAssistantHealthStatus>('unknown');
+
+/** 设置弹框内的提示信息。 */
+const settingsModalMessage = ref('');
+
+/** 设置弹框内的提示类型。 */
+const settingsModalMessageType = ref<'info' | 'success' | 'warning' | 'error'>('info');
+
+/** 远程服务健康检查状态。 */
+const remoteHealthStatus = ref<RemoteAiAssistantHealthStatus>('unknown');
+
+/** 当前远程操作是否执行中。 */
+const isRemoteActionRunning = ref(false);
+
+/** 设置或远程调用错误提示。 */
+const actionMessage = ref('');
 
 /** 聊天消息滚动容器引用。 */
 const messageListRef = ref<HTMLElement | null>(null);
@@ -52,7 +81,7 @@ const messages = ref<ChatMessage[]>([
     id: 1,
     role: 'assistant',
     content:
-      '你好，我是 AI小助手。后续我会基于当前打开的小说数据回答设定问题、辅助生成剧情，并帮助作者把自然语言指令转成可审查的写作建议。',
+      '你好，我是 AI小助手。配置远程AI小助手服务后，后续我会基于当前打开的小说数据回答设定问题、辅助生成剧情，并把自然语言指令转成可审查的写作建议。',
   },
 ]);
 
@@ -60,6 +89,346 @@ const messages = ref<ChatMessage[]>([
 const projectScopeText = computed(() =>
   hasCurrentProject.value ? `当前小说：${currentProjectTitle.value}` : '当前未打开小说项目',
 );
+
+/** 是否已经配置远程服务地址。 */
+const hasRemoteServiceBaseUrl = computed(() => remoteServiceBaseUrl.value.trim().length > 0);
+
+/** 是否已经注册当前远程项目。 */
+const hasRemoteProjectId = computed(() => remoteProjectId.value.trim().length > 0);
+
+/** 远程服务配置状态文案。 */
+const remoteServiceStatusText = computed(() =>
+  hasRemoteServiceBaseUrl.value ? remoteServiceBaseUrl.value : '未设置远程AI小助手服务地址',
+);
+
+/** 远程服务健康状态文案。 */
+const remoteHealthStatusText = computed(() => {
+  if (!hasRemoteServiceBaseUrl.value) {
+    return '未设置';
+  }
+
+  const statusTextMap: Record<RemoteAiAssistantHealthStatus, string> = {
+    unknown: '未检测',
+    checking: '检测中',
+    available: '可用',
+    unavailable: '不可用',
+  };
+
+  return statusTextMap[remoteHealthStatus.value];
+});
+
+/** 远程服务健康状态标签类型。 */
+const remoteHealthTagType = computed(() => {
+  if (remoteHealthStatus.value === 'available') {
+    return 'success';
+  }
+
+  if (remoteHealthStatus.value === 'checking') {
+    return 'info';
+  }
+
+  return 'warning';
+});
+
+/** 聊天不可用时的统一回复。 */
+const unavailableReply = '当前 AI 服务暂未接入，请设置好 AI 服务地址。';
+
+/** 远程服务请求超时时间，单位毫秒。 */
+const REMOTE_ASSISTANT_REQUEST_TIMEOUT_MS = 5000;
+
+/**
+ * 规范化远程服务地址。
+ * 远程AI小助手服务地址必须是绝对 HTTP 地址，避免被浏览器当作当前页面的相对路径。
+ * @param rawBaseUrl 用户输入的服务地址
+ */
+function normalizeRemoteServiceBaseUrl(rawBaseUrl: string): string {
+  const trimmedBaseUrl = rawBaseUrl.trim().replace(/\/+$/, '');
+
+  if (!trimmedBaseUrl) {
+    return '';
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(trimmedBaseUrl);
+  } catch {
+    throw new Error('远程AI小助手服务地址必须是 http://ip:port 或 https://域名 的完整地址');
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('远程AI小助手服务地址只支持 http:// 或 https://');
+  }
+
+  return parsedUrl.toString().replace(/\/+$/, '');
+}
+
+/**
+ * 解析远程服务 API 地址。
+ * @param path API 路径
+ * @param baseUrl 远程服务基础地址
+ */
+function resolveRemoteApiUrl(path: string, baseUrl = remoteServiceBaseUrl.value): string {
+  const normalizedBaseUrl = normalizeRemoteServiceBaseUrl(baseUrl);
+  const apiBaseUrl = new URL('/api/v1/', `${normalizedBaseUrl}/`);
+  return new URL(path.replace(/^\/+/, ''), apiBaseUrl).toString();
+}
+
+/**
+ * 将 AbortError 转换成明确的超时提示。
+ * @param error fetch 抛出的错误
+ */
+function formatRemoteRequestError(error: unknown): string {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return '远程AI小助手服务请求超时，请检查服务地址或网络连接';
+  }
+
+  return error instanceof Error ? error.message : '远程AI小助手服务不可用';
+}
+
+/**
+ * 读取 AI小助手设置。
+ */
+async function loadSettings(): Promise<void> {
+  isLoadingSettings.value = true;
+  actionMessage.value = '';
+
+  try {
+    const settings = await loadAiAssistantSettings();
+    remoteServiceBaseUrl.value = settings.remoteServiceBaseUrl;
+    remoteProjectId.value = settings.remoteProjectId;
+    settingFormBaseUrl.value = settings.remoteServiceBaseUrl;
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : '读取 AI 设置失败';
+  } finally {
+    isLoadingSettings.value = false;
+  }
+}
+
+/**
+ * 打开 AI 设置弹框。
+ */
+function openSettingsModal(): void {
+  settingFormBaseUrl.value = remoteServiceBaseUrl.value;
+  settingsModalMessage.value = '';
+  settingsModalMessageType.value = 'info';
+  settingHealthStatus.value = 'unknown';
+  isSettingsModalOpen.value = true;
+}
+
+/**
+ * 关闭 AI 设置弹框。
+ */
+function closeSettingsModal(): void {
+  isSettingsModalOpen.value = false;
+  settingFormBaseUrl.value = remoteServiceBaseUrl.value;
+  settingsModalMessage.value = '';
+  settingsModalMessageType.value = 'info';
+  settingHealthStatus.value = 'unknown';
+}
+
+/**
+ * 请求远程AI小助手服务。
+ * @param path API 路径
+ * @param init fetch 配置
+ * @param baseUrl 可选的临时服务地址，设置弹框保存前用于检测用户刚输入的地址
+ */
+async function requestRemoteAssistant(
+  path: string,
+  init?: RequestInit,
+  baseUrl = remoteServiceBaseUrl.value,
+): Promise<unknown> {
+  const abortController = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    abortController.abort();
+  }, REMOTE_ASSISTANT_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+
+  try {
+    response = await fetch(resolveRemoteApiUrl(path, baseUrl), {
+      ...init,
+      signal: abortController.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    throw new Error(`远程AI小助手服务请求失败：HTTP ${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
+  return response.json() as Promise<unknown>;
+}
+
+/**
+ * 检测远程AI小助手服务是否可用。
+ */
+async function checkRemoteServiceHealth(): Promise<boolean> {
+  if (!hasRemoteServiceBaseUrl.value) {
+    remoteHealthStatus.value = 'unavailable';
+    actionMessage.value = '请先设置远程AI小助手服务地址';
+    return false;
+  }
+
+  remoteHealthStatus.value = 'checking';
+  actionMessage.value = '';
+
+  try {
+    await requestRemoteAssistant('/health', { method: 'GET' });
+    remoteHealthStatus.value = 'available';
+    actionMessage.value = '远程AI小助手服务可用';
+    return true;
+  } catch (error) {
+    remoteHealthStatus.value = 'unavailable';
+    actionMessage.value = formatRemoteRequestError(error);
+    return false;
+  }
+}
+
+/**
+ * 检测设置弹框中输入的远程AI小助手服务地址。
+ */
+async function checkSettingFormHealth(): Promise<void> {
+  settingsModalMessage.value = '';
+  settingsModalMessageType.value = 'info';
+  settingHealthStatus.value = 'checking';
+
+  try {
+    const nextBaseUrl = normalizeRemoteServiceBaseUrl(settingFormBaseUrl.value);
+
+    if (!nextBaseUrl) {
+      throw new Error('请填写远程AI小助手服务地址');
+    }
+
+    await requestRemoteAssistant('/health', { method: 'GET' }, nextBaseUrl);
+    settingFormBaseUrl.value = nextBaseUrl;
+    settingHealthStatus.value = 'available';
+    settingsModalMessage.value = '远程AI小助手服务可用';
+    settingsModalMessageType.value = 'success';
+  } catch (error) {
+    settingHealthStatus.value = 'unavailable';
+    settingsModalMessage.value = formatRemoteRequestError(error);
+    settingsModalMessageType.value = 'warning';
+  }
+}
+
+/**
+ * 保存远程AI小助手服务地址。
+ */
+async function submitSettings(): Promise<void> {
+  isSavingSettings.value = true;
+  settingsModalMessage.value = '';
+  settingsModalMessageType.value = 'info';
+
+  try {
+    const nextBaseUrl = normalizeRemoteServiceBaseUrl(settingFormBaseUrl.value);
+
+    if (!nextBaseUrl) {
+      throw new Error('请填写远程AI小助手服务地址');
+    }
+
+    const settings = await saveRemoteAiAssistantServiceBaseUrl(nextBaseUrl);
+    remoteServiceBaseUrl.value = settings.remoteServiceBaseUrl;
+    settingFormBaseUrl.value = settings.remoteServiceBaseUrl;
+    remoteHealthStatus.value = settingHealthStatus.value === 'available' ? 'available' : 'unknown';
+    isSettingsModalOpen.value = false;
+  } catch (error) {
+    settingsModalMessage.value = formatRemoteRequestError(error);
+    settingsModalMessageType.value = 'error';
+  } finally {
+    isSavingSettings.value = false;
+  }
+}
+
+/**
+ * 注册当前小说项目到远程AI小助手服务。
+ */
+async function registerCurrentProject(): Promise<void> {
+  if (!currentProject.value) {
+    actionMessage.value = '请先打开小说项目';
+    return;
+  }
+
+  isRemoteActionRunning.value = true;
+  actionMessage.value = '';
+
+  try {
+    const isHealthy = await checkRemoteServiceHealth();
+    if (!isHealthy) {
+      return;
+    }
+
+    const response = await requestRemoteAssistant('/projects/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: currentProject.value.novel.title,
+        projectPath: currentProject.value.baseDir,
+      }),
+    });
+    const registerResult = response as RegisterProjectResponse | null;
+    const nextProjectId = registerResult?.projectId ?? registerResult?.id ?? '';
+
+    if (!nextProjectId) {
+      throw new Error('远程AI小助手服务没有返回项目 ID');
+    }
+
+    const settings = await saveRemoteAiAssistantProjectId(nextProjectId);
+    remoteProjectId.value = settings.remoteProjectId;
+    actionMessage.value = '当前小说项目已注册到远程AI小助手服务';
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : '注册当前项目失败';
+  } finally {
+    isRemoteActionRunning.value = false;
+  }
+}
+
+/**
+ * 同步当前小说项目，让远程AI小助手服务更新索引。
+ */
+async function syncCurrentProject(): Promise<void> {
+  if (!currentProject.value) {
+    actionMessage.value = '请先打开小说项目';
+    return;
+  }
+
+  if (!hasRemoteProjectId.value) {
+    actionMessage.value = '请先注册当前小说项目';
+    return;
+  }
+
+  isRemoteActionRunning.value = true;
+  actionMessage.value = '';
+
+  try {
+    const isHealthy = await checkRemoteServiceHealth();
+    if (!isHealthy) {
+      return;
+    }
+
+    await requestRemoteAssistant(`/projects/${encodeURIComponent(remoteProjectId.value)}/sync`, {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId: remoteProjectId.value,
+        projectPath: currentProject.value.baseDir,
+      }),
+    });
+    actionMessage.value = '已请求远程AI小助手服务同步当前小说项目';
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : '同步当前项目失败';
+  } finally {
+    isRemoteActionRunning.value = false;
+  }
+}
 
 /**
  * 滚动到最新消息。
@@ -72,19 +441,40 @@ async function scrollToLatestMessage(): Promise<void> {
 }
 
 /**
- * 生成假回复文本。
+ * 检查聊天前置条件。
  */
-function createPlaceholderReply(): string {
+async function canUseRemoteChat(): Promise<boolean> {
+  if (!hasRemoteServiceBaseUrl.value) {
+    return false;
+  }
+
+  if (remoteHealthStatus.value === 'available') {
+    return true;
+  }
+
+  return checkRemoteServiceHealth();
+}
+
+/**
+ * 生成当前阶段的回复文本。
+ */
+async function createPlaceholderReply(): Promise<string> {
+  const canChat = await canUseRemoteChat();
+
+  if (!canChat) {
+    return unavailableReply;
+  }
+
   return [
-    '此模块暂未接入 AI 服务。',
-    '后续 AI小助手会只基于当前打开的小说数据进行回复，可用于查询设定、分析人物与时间线、根据世界状态生成简短连贯的剧情参考，并把可能写入 JSON 的内容作为建议变更交给用户确认。',
+    '远程AI小助手服务地址已设置且可用，但聊天接口暂未接入。',
+    '后续会通过远程AI小助手服务只基于当前打开的小说数据进行回复，可用于查询设定、分析人物与时间线、生成剧情参考，并把可能写入 JSON 的内容作为建议变更交给用户确认。',
   ].join('\n');
 }
 
 /**
- * 发送用户消息并追加固定占位回复。
+ * 发送用户消息并追加当前阶段的占位回复。
  */
-function sendMessage(): void {
+async function sendMessage(): Promise<void> {
   const trimmedText = inputText.value.trim();
 
   if (!trimmedText) {
@@ -97,14 +487,21 @@ function sendMessage(): void {
     role: 'user',
     content: trimmedText,
   });
+  inputText.value = '';
+  void scrollToLatestMessage();
+
   messages.value.push({
     id: timestamp + 1,
     role: 'assistant',
-    content: createPlaceholderReply(),
+    content: await createPlaceholderReply(),
   });
-  inputText.value = '';
   void scrollToLatestMessage();
 }
+
+/** 页面挂载后读取本地 AI 设置。 */
+onMounted(() => {
+  void loadSettings();
+});
 </script>
 
 <template>
@@ -114,7 +511,7 @@ function sendMessage(): void {
       <div class="assistant-title-group">
         <h2 class="assistant-title">AI小助手</h2>
         <n-text depth="3" class="assistant-subtitle">
-          预留给当前小说项目的 AI 聊天与写作辅助入口
+          连接远程AI小助手服务后，为当前小说项目提供聊天、搜索、注册和同步入口
         </n-text>
       </div>
       <n-tag :type="hasCurrentProject ? 'success' : 'warning'" size="small" round>
@@ -122,37 +519,54 @@ function sendMessage(): void {
       </n-tag>
     </header>
 
-    <div class="assistant-workspace">
-      <!-- 左侧上下文范围提示：只展示未来会挂载的数据类型。 -->
-      <aside class="assistant-context-panel" aria-label="小助手上下文范围">
-        <section class="context-section">
-          <h3 class="context-title">上下文范围</h3>
-          <n-text depth="3" class="context-description">
-            后续小助手只使用当前打开小说的数据，不跨项目读取。
+    <div class="assistant-layout">
+      <!-- 远程服务设置区：集中放置设置、检测、注册和同步入口。 -->
+      <section class="assistant-service-panel" aria-label="远程AI小助手服务设置">
+        <div class="service-info">
+          <h3 class="service-title">远程AI小助手服务</h3>
+          <n-text depth="3" class="service-status">
+            {{ remoteServiceStatusText }}
           </n-text>
-          <div class="context-tag-list">
-            <n-tag
-              v-for="dataType in attachedDataTypes"
-              :key="dataType"
-              size="small"
-              round
-            >
-              {{ dataType }}
-            </n-tag>
-          </div>
-        </section>
+          <n-text v-if="currentProjectPath" depth="3" class="service-status">
+            当前项目目录：{{ currentProjectPath }}
+          </n-text>
+          <n-text v-if="remoteProjectId" depth="3" class="service-status">
+            远程项目 ID：{{ remoteProjectId }}
+          </n-text>
+        </div>
 
-        <section class="context-section">
-          <h3 class="context-title">预留能力</h3>
-          <ul class="capability-list">
-            <li v-for="capability in plannedCapabilities" :key="capability">
-              {{ capability }}
-            </li>
-          </ul>
-        </section>
-      </aside>
+        <div class="service-actions">
+          <n-tag :type="remoteHealthTagType" size="small" round>
+            {{ remoteHealthStatusText }}
+          </n-tag>
+          <n-button size="small" :loading="isLoadingSettings" @click="openSettingsModal">
+            设置
+          </n-button>
+          <n-button
+            size="small"
+            :disabled="!hasCurrentProject || !hasRemoteServiceBaseUrl || isRemoteActionRunning"
+            :loading="isRemoteActionRunning"
+            @click="registerCurrentProject"
+          >
+            注册
+          </n-button>
+          <n-button
+            type="primary"
+            size="small"
+            :disabled="!hasCurrentProject || !hasRemoteServiceBaseUrl || !hasRemoteProjectId || isRemoteActionRunning"
+            :loading="isRemoteActionRunning"
+            @click="syncCurrentProject"
+          >
+            同步
+          </n-button>
+        </div>
+      </section>
 
-      <!-- 右侧聊天室：当前只提供假发送与固定回复。 -->
+      <n-alert v-if="actionMessage" type="info" :bordered="false">
+        {{ actionMessage }}
+      </n-alert>
+
+      <!-- 聊天室：当前只检查远程服务配置和健康状态，不真正调用 /chat。 -->
       <section class="chat-panel" aria-label="AI小助手聊天室">
         <div ref="messageListRef" class="message-list">
           <article
@@ -184,6 +598,47 @@ function sendMessage(): void {
         </footer>
       </section>
     </div>
+
+    <!-- AI 设置弹框：后续可继续扩展更多远程AI小助手服务配置项。 -->
+    <AppModal
+      :open="isSettingsModalOpen"
+      title="AI 设置"
+      :width="560"
+      @close="closeSettingsModal"
+    >
+      <n-form label-placement="top">
+        <n-form-item label="远程AI小助手服务地址">
+          <n-input
+            v-model:value="settingFormBaseUrl"
+            placeholder="例如：http://127.0.0.1:7860"
+            clearable
+            :disabled="isSavingSettings || settingHealthStatus === 'checking'"
+          />
+        </n-form-item>
+      </n-form>
+
+      <n-alert v-if="settingsModalMessage" :type="settingsModalMessageType" :bordered="false">
+        {{ settingsModalMessage }}
+      </n-alert>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button :disabled="isSavingSettings" @click="closeSettingsModal">
+            取消
+          </n-button>
+          <n-button
+            :loading="settingHealthStatus === 'checking'"
+            :disabled="isSavingSettings"
+            @click="checkSettingFormHealth"
+          >
+            检测
+          </n-button>
+          <n-button type="primary" :loading="isSavingSettings" @click="submitSettings">
+            保存
+          </n-button>
+        </div>
+      </template>
+    </AppModal>
   </section>
 </template>
 
@@ -227,63 +682,57 @@ function sendMessage(): void {
   line-height: 1.5;
 }
 
-/** 小助手工作区，左侧范围说明，右侧聊天室。 */
-.assistant-workspace {
+/** 页面主体纵向布局：上方服务控制，下方聊天。 */
+.assistant-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
   flex: 1;
   min-height: 0;
 }
 
-/** 小助手上下文范围侧栏。 */
-.assistant-context-panel {
-  display: grid;
-  align-content: start;
+/** 远程服务设置和操作面板。 */
+.assistant-service-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
-  min-height: 0;
-  padding: 16px;
-  overflow: auto;
+  padding: 14px 16px;
   background: #ffffff;
   border: 1px solid #d9e1ea;
   border-radius: 8px;
 }
 
-/** 侧栏信息分区。 */
-.context-section {
+/** 服务信息区。 */
+.service-info {
   display: grid;
-  gap: 10px;
+  gap: 4px;
+  min-width: 0;
 }
 
-/** 侧栏分区标题。 */
-.context-title {
+/** 服务区标题。 */
+.service-title {
   color: #24313d;
   font-size: 15px;
   line-height: 1.3;
 }
 
-/** 侧栏说明文本。 */
-.context-description {
+/** 服务状态文本。 */
+.service-status {
+  overflow: hidden;
+  max-width: 720px;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/** 上下文数据标签列表。 */
-.context-tag-list {
+/** 服务操作按钮区。 */
+.service-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-}
-
-/** 预留能力列表。 */
-.capability-list {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding-left: 18px;
-  color: #465260;
-  font-size: 13px;
-  line-height: 1.55;
 }
 
 /** 聊天室面板。 */
@@ -369,5 +818,12 @@ function sendMessage(): void {
 /** 发送按钮保持固定宽度，避免输入内容影响布局。 */
 .send-button {
   width: 88px;
+}
+
+/** 弹框底部按钮栏。 */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>
