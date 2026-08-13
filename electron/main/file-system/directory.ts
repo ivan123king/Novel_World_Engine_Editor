@@ -1,20 +1,18 @@
+import { app } from 'electron';
 import { mkdir } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
-/** 应用系统数据目录名称；只用于设置等系统文件，不保存小说领域数据。 */
-export const DEFAULT_DATA_DIRECTORY_NAME = 'data';
-
 /**
  * 获取应用系统数据目录路径。
- * 注意：该目录不再作为人物、物品、地图等小说数据的默认保存目录。
+ * 使用 Electron userData 目录保存工具自身配置，避免安装版写入工作目录或安装目录。
  */
 export function getDefaultBaseDirectory(): string {
-  return resolve(process.cwd(), DEFAULT_DATA_DIRECTORY_NAME);
+  return resolve(app.getPath('userData'));
 }
 
 /**
  * 解析用户指定的小说项目基础目录路径。
- * 业务数据必须传入已打开的小说项目目录，不允许静默回退到系统 data 目录。
+ * 业务数据必须传入已打开的小说项目目录，不允许静默回退到应用系统配置目录。
  */
 export function resolveBaseDirectory(baseDirPath?: string): string {
   const normalizedBaseDirPath = baseDirPath?.trim();

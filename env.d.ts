@@ -11,6 +11,7 @@ import type {
   NovelDirectoryRecordsFile,
   PlotFile,
   RelationGraphFile,
+  SystemConfigEditorFile,
   TimelineFile,
   TimelineIndexFile,
 } from './src/types';
@@ -101,8 +102,8 @@ declare global {
       loadAiAssistantSettings: () => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantProjectId: (remoteProjectId: string) => Promise<AiAssistantSettings>;
-      loadSystemConfigText: () => Promise<string>;
-      saveSystemConfigText: (configText: string) => Promise<string>;
+      loadSystemConfigText: () => Promise<SystemConfigEditorFile>;
+      saveSystemConfigText: (configText: string) => Promise<SystemConfigEditorFile>;
       onOpenSystemConfigEditor: (listener: () => void) => () => void;
       onOpenAboutDialog: (listener: () => void) => () => void;
       onCurrentProjectChanged: (

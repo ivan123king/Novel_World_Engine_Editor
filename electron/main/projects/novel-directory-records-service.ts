@@ -12,7 +12,8 @@ import {
 
 /**
  * 小说目录记录服务。
- * 负责维护 data/system/novel-directory-records.json，只记录小说项目入口目录，不保存小说领域数据。
+ * 负责维护 Electron userData 目录中的 system/novel-directory-records.json。
+ * 只记录小说项目入口目录，不保存小说领域数据。
  */
 
 /** 小说目录记录文件相对路径片段。 */

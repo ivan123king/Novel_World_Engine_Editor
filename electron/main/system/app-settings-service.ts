@@ -10,7 +10,8 @@ import type { JsonValue } from '../../../src/types/json-value';
 
 /**
  * 应用系统配置服务。
- * 负责读写 data/system/app-settings.json，只保存工具自身设置，不保存小说领域数据。
+ * 负责读写 Electron userData 目录中的 system/app-settings.json。
+ * 这里只保存工具自身设置，不保存小说领域数据。
  */
 
 /** 应用系统配置文件 schema 版本。 */

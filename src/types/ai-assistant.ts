@@ -2,7 +2,7 @@ import type { JsonValue } from './json-value';
 
 /**
  * AI小助手设置类型。
- * 该文件描述保存在系统设置 `data/system/app-settings.json` 中的 AI小助手设置结构。
+ * 该文件描述保存在系统设置 `system/app-settings.json` 中的 AI小助手设置结构。
  */
 
 /** 远程AI小助手服务健康状态。 */

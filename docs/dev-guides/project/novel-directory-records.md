@@ -4,7 +4,7 @@
 
 本文档用于指导“小说目录记录”功能。
 
-用户通过本软件成功新建或打开的小说项目目录，都应被记录到应用自身的 `data/` 目录下。这里记录的是“曾经由本软件识别过的小说项目入口”，用于后续快速打开，不保存人物、物品、地点、剧情、时间线等小说领域数据。
+用户通过本软件成功新建或打开的小说项目目录，都应被记录到应用自身的 Electron userData 目录下。这里记录的是“曾经由本软件识别过的小说项目入口”，用于后续快速打开，不保存人物、物品、地点、剧情、时间线等小说领域数据。
 
 第一版只做简单清晰的记录、展示、删除和快捷打开，不做复杂的最近打开排序、多项目工作区、云同步或自动迁移。
 
@@ -30,7 +30,7 @@ Electron 顶部菜单在 `小说` 一级菜单下新增入口：
 小说目录记录属于应用自身数据，保存到仓库运行数据目录：
 
 ```text
-data/
+Electron userData/
   system/
     novel-directory-records.json
 ```
@@ -116,8 +116,8 @@ data/
 2. 校验目录下存在 `novel.json`。
 3. 校验 `novel.json` 结构有效。
 4. 校验通过后，将该目录设置为当前小说项目。
-5. 更新 `data/system/app-settings.json` 中的 `lastOpenedProjectPath`。
-6. 更新 `data/system/novel-directory-records.json` 中对应记录的 `title` 和 `lastOpenedAt`。
+5. 更新 userData 下的 `system/app-settings.json` 中的 `lastOpenedProjectPath`。
+6. 更新 userData 下的 `system/novel-directory-records.json` 中对应记录的 `title` 和 `lastOpenedAt`。
 7. 通知 renderer 当前项目已变化。
 8. 关闭小说目录弹框，或保持弹框打开但明确显示当前项目已切换；第一版建议关闭弹框。
 
@@ -132,7 +132,7 @@ data/
 
 用户点击某条记录右侧的 `删除记录` 后：
 
-1. 只从 `data/system/novel-directory-records.json` 删除该条记录。
+1. 只从 userData 下的 `system/novel-directory-records.json` 删除该条记录。
 2. 不删除用户本地小说项目目录。
 3. 不删除该目录下的 `novel.json` 或任何小说数据。
 4. 如果删除的是当前已打开项目的记录，不关闭当前项目，只是不再在记录列表里展示。

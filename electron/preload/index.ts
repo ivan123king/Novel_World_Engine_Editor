@@ -10,6 +10,7 @@ import type {
   NovelDirectoryRecordsFile,
   PlotFile,
   RelationGraphFile,
+  SystemConfigEditorFile,
   TimelineFile,
   TimelineIndexFile,
 } from '../../src/types';
@@ -51,9 +52,10 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('ai-assistant:service-url-save', baseUrl) as Promise<AiAssistantSettings>,
   saveRemoteAiAssistantProjectId: (remoteProjectId: string) =>
     ipcRenderer.invoke('ai-assistant:remote-project-id-save', remoteProjectId) as Promise<AiAssistantSettings>,
-  loadSystemConfigText: () => ipcRenderer.invoke('system-config:load') as Promise<string>,
+  loadSystemConfigText: () =>
+    ipcRenderer.invoke('system-config:load') as Promise<SystemConfigEditorFile>,
   saveSystemConfigText: (configText: string) =>
-    ipcRenderer.invoke('system-config:save', configText) as Promise<string>,
+    ipcRenderer.invoke('system-config:save', configText) as Promise<SystemConfigEditorFile>,
   onOpenSystemConfigEditor: (listener: () => void) => {
     const channelListener = () => {
       listener();

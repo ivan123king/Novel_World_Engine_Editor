@@ -76,7 +76,7 @@ export async function saveProjectOverview(title: string, description: string): P
 
 /**
  * 获取当前小说项目目录。
- * 模块 IPC 未显式传入 baseDirPath 时使用，避免继续写入系统 data 目录。
+ * 模块 IPC 未显式传入 baseDirPath 时使用，避免继续写入应用系统配置目录。
  */
 export function resolveCurrentProjectDirectory(baseDirPath?: string): string {
   const normalizedBaseDirPath = baseDirPath?.trim();

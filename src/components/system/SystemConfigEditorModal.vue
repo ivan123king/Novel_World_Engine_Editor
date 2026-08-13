@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 系统配置 JSON 编辑弹框组件。
- * 监听 Electron 菜单事件，按需读取和保存 data/system/app-settings.json。
+ * 监听 Electron 菜单事件，按需读取和保存 Electron userData 目录中的 app-settings.json。
  */
 import { onMounted, onUnmounted, ref } from 'vue';
 import {
@@ -15,6 +15,8 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const configDraft = ref('');
 const configError = ref('');
+const configFilePath = ref('');
+const pathCopyTip = ref('');
 
 let removeOpenListener: (() => void) | null = null;
 
@@ -23,11 +25,15 @@ async function openModal(): Promise<void> {
   isVisible.value = true;
   isLoading.value = true;
   configError.value = '';
+  pathCopyTip.value = '';
 
   try {
-    configDraft.value = await loadSystemConfigText();
+    const configFile = await loadSystemConfigText();
+    configDraft.value = configFile.text;
+    configFilePath.value = configFile.filePath;
   } catch (error) {
     configDraft.value = '';
+    configFilePath.value = '';
     configError.value =
       error instanceof Error ? error.message : '系统配置读取失败，将使用默认配置。';
   } finally {
@@ -43,11 +49,27 @@ function closeModal(): void {
 
   isVisible.value = false;
   configError.value = '';
+  pathCopyTip.value = '';
+}
+
+/** 复制系统配置文件路径，方便用户用外部编辑器直接打开。 */
+async function copyConfigFilePath(): Promise<void> {
+  if (!configFilePath.value) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(configFilePath.value);
+    pathCopyTip.value = '已复制';
+  } catch {
+    pathCopyTip.value = '复制失败';
+  }
 }
 
 /** 保存用户编辑后的系统配置 JSON，并由主进程刷新当前项目状态。 */
 async function handleSave(): Promise<void> {
   configError.value = '';
+  pathCopyTip.value = '';
 
   try {
     JSON.parse(configDraft.value);
@@ -59,7 +81,9 @@ async function handleSave(): Promise<void> {
   isSaving.value = true;
 
   try {
-    configDraft.value = await saveSystemConfigText(configDraft.value);
+    const configFile = await saveSystemConfigText(configDraft.value);
+    configDraft.value = configFile.text;
+    configFilePath.value = configFile.filePath;
     isVisible.value = false;
   } catch (error) {
     configError.value =
@@ -95,6 +119,22 @@ onUnmounted(() => {
     @close="closeModal"
   >
     <div class="system-config-editor">
+      <div class="system-config-editor__path-row">
+        <n-input
+          :value="configFilePath"
+          readonly
+          size="small"
+          placeholder="系统配置路径加载中"
+        />
+        <n-button size="small" :disabled="!configFilePath" @click="copyConfigFilePath">
+          复制路径
+        </n-button>
+      </div>
+
+      <n-text v-if="pathCopyTip" depth="3" class="system-config-editor__copy-tip">
+        {{ pathCopyTip }}
+      </n-text>
+
       <n-input
         v-model:value="configDraft"
         type="textarea"
@@ -129,6 +169,20 @@ onUnmounted(() => {
 .system-config-editor {
   display: grid;
   gap: 12px;
+}
+
+/** 配置文件路径行保持单行展示，便于用户复制完整绝对路径。 */
+.system-config-editor__path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+/** 复制结果提示使用紧凑文本，避免挤占 JSON 编辑区。 */
+.system-config-editor__copy-tip {
+  min-height: 18px;
+  font-size: 12px;
 }
 
 /** 错误信息保持独立一行，避免挤压操作按钮。 */

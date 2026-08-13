@@ -1,4 +1,10 @@
-import { loadAppSettings, saveCompleteAppSettings, type AppSettingsFile } from './app-settings-service';
+import type { SystemConfigEditorFile } from '../../../src/types';
+import {
+  loadAppSettings,
+  resolveAppSettingsFilePath,
+  saveCompleteAppSettings,
+  type AppSettingsFile,
+} from './app-settings-service';
 
 /**
  * 系统配置编辑服务。
@@ -23,17 +29,25 @@ function createDefaultAppSettings(): AppSettingsFile {
   };
 }
 
-/** 读取可编辑的系统配置 JSON 文本。 */
-export async function loadSystemConfigText(): Promise<string> {
+/** 创建系统配置编辑器返回结果。 */
+function createSystemConfigEditorFile(settings: AppSettingsFile): SystemConfigEditorFile {
+  return {
+    filePath: resolveAppSettingsFilePath(),
+    text: JSON.stringify(settings, null, 2),
+  };
+}
+
+/** 读取可编辑的系统配置 JSON 文本和配置文件路径。 */
+export async function loadSystemConfigText(): Promise<SystemConfigEditorFile> {
   const settings = (await loadAppSettings()) ?? createDefaultAppSettings();
-  return JSON.stringify(settings, null, 2);
+  return createSystemConfigEditorFile(settings);
 }
 
 /**
  * 保存用户编辑后的系统配置 JSON 文本。
  * @param configText renderer 弹框提交的 JSON 文本
  */
-export async function saveSystemConfigText(configText: string): Promise<string> {
+export async function saveSystemConfigText(configText: string): Promise<SystemConfigEditorFile> {
   let parsedConfig: unknown;
 
   try {
@@ -47,5 +61,5 @@ export async function saveSystemConfigText(configText: string): Promise<string> 
   }
 
   const savedConfig = await saveCompleteAppSettings(parsedConfig);
-  return JSON.stringify(savedConfig, null, 2);
+  return createSystemConfigEditorFile(savedConfig);
 }

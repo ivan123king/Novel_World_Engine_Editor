@@ -115,16 +115,16 @@ selected-folder/
 
 地图模块当前已有 `maps/` 数据目录，第一版项目结构应继续保留该目录，避免后续地图数据无处迁移。
 
-## 应用系统 `data/` 目录
+## 应用系统 userData 目录
 
 正式功能实现后，仓库根目录 `data/` 不再保存小说领域数据。人物、物品、地点、地图、事件、时间线等内容必须全部保存在用户选择的小说项目目录下。
 
-`data/` 只用于保存应用自身的系统文件，例如上一次打开的小说项目目录、后续全局设置、窗口偏好等。这类文件属于工具运行状态，不属于任何一部小说的世界状态。
+Electron `app.getPath('userData')` 对应的目录用于保存应用自身的系统文件，例如上一次打开的小说项目目录、后续全局设置、窗口偏好等。这类文件属于工具运行状态，不属于任何一部小说的世界状态。
 
 建议第一版系统文件结构：
 
 ```text
-data/
+Electron userData/
   system/
     app-settings.json
 ```
@@ -147,8 +147,8 @@ data/
 
 实现原则：
 
-- `data/` 可以保存系统文件，但不能继续保存小说项目领域数据。
-- `data/system/app-settings.json` 只记录项目目录路径，不复制 `novel.json` 内容，不保存人物、物品、地点等小说数据。
+- Electron userData 可以保存系统文件，但不能继续保存小说项目领域数据。
+- userData 下的 `system/app-settings.json` 只记录项目目录路径，不复制 `novel.json` 内容，不保存人物、物品、地点等小说数据。
 - 新建和打开小说项目成功后，必须更新 `lastOpenedProjectPath`。
 - 如果用户移动或删除了上一次打开的目录，启动时应进入未打开项目状态，并提示用户重新新建或打开项目。
 - 读取系统配置失败不应导致应用崩溃，可以按未打开项目处理。
@@ -159,7 +159,7 @@ data/
 
 推荐流程：
 
-1. 读取 `data/system/app-settings.json`。
+1. 读取 userData 下的 `system/app-settings.json`。
 2. 如果文件不存在，进入未打开项目状态。
 3. 如果 `lastOpenedProjectPath` 为空，进入未打开项目状态。
 4. 如果路径存在，检查该目录下是否存在 `novel.json`。
@@ -175,7 +175,7 @@ data/
 
 本功能实现后，用户会手动新建一个小说项目目录，并把当前 `data/` 中的小说领域目录和文件复制到该新目录中。应用本身第一版不负责自动迁移，也不在启动时把系统 `data/` 当成小说项目目录。
 
-如果实现后 `data/system/` 已经存在，搬迁第一个小说项目时不要复制 `data/system/`。`system/` 是应用配置目录，不属于小说项目结构。
+如果旧开发数据里的 `data/system/` 已经存在，搬迁第一个小说项目时不要复制 `data/system/`。系统配置应保存在 Electron userData 目录，不属于小说项目结构。
 
 搬迁后的第一个小说项目目录示例：
 
@@ -189,7 +189,7 @@ first-novel-folder/
   maps/
 ```
 
-复制完成后，用户通过 `小说 > 打开` 选择 `first-novel-folder/`，应用校验 `novel.json` 后把该目录写入 `data/system/app-settings.json`。
+复制完成后，用户通过 `小说 > 打开` 选择 `first-novel-folder/`，应用校验 `novel.json` 后把该目录写入 userData 下的 `system/app-settings.json`。
 
 ## 职责拆分
 
@@ -211,7 +211,7 @@ electron/main/
 - `menu/novel-menu.ts`：创建 Electron 菜单，绑定“小说 / 新建 / 打开”动作。
 - `projects/project-service.ts`：负责选择目录、创建项目、打开项目、读取和保存 `novel.json`。
 - `projects/project-schema.ts`：定义 `NovelProjectFile` 类型和 `isNovelProjectFile` 校验函数。
-- `system/app-settings-service.ts`：负责读取和写入 `data/system/app-settings.json`，记录上一次打开的小说项目目录。
+- `system/app-settings-service.ts`：负责读取和写入 userData 下的 `system/app-settings.json`，记录上一次打开的小说项目目录。
 - `electron/main/index.ts`：只负责窗口创建、IPC 注册和菜单安装。
 
 preload 和 renderer 建议补充：
@@ -242,7 +242,7 @@ projects:restore-last-opened
 - `projects:open`：可供 renderer 后续按钮复用；第一版菜单也可直接调用同一个 main service。
 - `projects:get-current`：renderer 初始化时获取当前项目。
 - `projects:current-changed`：main process 在新建或打开成功后主动通知当前窗口。
-- `projects:restore-last-opened`：应用启动或 renderer 初始化时恢复 `data/system/app-settings.json` 中记录的上一次项目。
+- `projects:restore-last-opened`：应用启动或 renderer 初始化时恢复 userData 下的 `system/app-settings.json` 中记录的上一次项目。
 
 如果第一版只做菜单触发，也仍应把项目创建和打开能力抽成 service，避免未来 renderer 项目首页按钮重复实现一套逻辑。
 
@@ -306,7 +306,7 @@ projects:restore-last-opened
 
 1. 新增 `NovelProjectFile` 类型和校验函数。
 2. 新增 project service，完成创建、打开和 `novel.json` 读写。
-3. 新增 app settings service，使用 `data/system/app-settings.json` 保存上一次打开的项目目录。
+3. 新增 app settings service，使用 userData 下的 `system/app-settings.json` 保存上一次打开的项目目录。
 4. 新增 Electron 菜单 `小说 / 新建 / 打开`。
 5. 新建和打开成功后更新 `lastOpenedProjectPath` 并通知 renderer 当前项目。
 
