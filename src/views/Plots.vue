@@ -75,7 +75,7 @@ const contextMenuOptions = computed(() => {
     return [
       { label: '新建同级剧情', key: 'createSiblingPlot' },
       { label: '新建子剧情', key: 'createChildPlot' },
-      { label: '重命名', key: 'renamePlot' },
+      // { label: '重命名', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -85,7 +85,7 @@ const contextMenuOptions = computed(() => {
       { label: '进入剧情', key: 'openPlot' },
       { label: '新建同级剧情', key: 'createSiblingPlot' },
       { label: '新建子剧情', key: 'createChildPlot' },
-      { label: '重命名', key: 'renamePlot' },
+      // { label: '重命名', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -97,6 +97,10 @@ const contextMenuOptions = computed(() => {
       { label: '下移', key: 'moveDescriptionDown' },
       { label: '删除', key: 'deleteDescription' },
     ];
+  }
+
+  if (!contextMenu.target?.plotId) {
+    return [];
   }
 
   return [

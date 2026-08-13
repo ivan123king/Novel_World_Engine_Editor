@@ -535,12 +535,14 @@ export function usePlotLibrary() {
     }
   }
 
-  /** 删除右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
-  async function deleteDescriptionBlock(descriptionId: string): Promise<void> {
-    const plotId = inspectedPlot.value?.id;
-    const targetPlot = inspectedPlot.value;
+  /** 删除指定剧情块内的说明卡片，并保存对应 JSON 文件。 */
+  async function deleteDescriptionBlock(
+    descriptionId: string,
+    plotId = inspectedPlot.value?.id ?? '',
+  ): Promise<void> {
+    const targetPlot = plots.value.find((plot) => plot.id === plotId);
 
-    if (!plotId || !targetPlot) {
+    if (!targetPlot) {
       return;
     }
 
@@ -557,15 +559,17 @@ export function usePlotLibrary() {
     }
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
+    inspectedPlotId.value = savedPlot.id;
     // saveMessage.value = '已删除说明卡片。';
   }
 
-  /** 上下移动右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
+  /** 上下移动指定剧情块内的说明卡片，并保存对应 JSON 文件。 */
   async function moveDescriptionBlock(
     descriptionId: string,
     direction: 'up' | 'down',
+    plotId = inspectedPlot.value?.id ?? '',
   ): Promise<void> {
-    const targetPlot = inspectedPlot.value;
+    const targetPlot = plots.value.find((plot) => plot.id === plotId);
 
     if (!targetPlot) {
       return;
@@ -596,6 +600,7 @@ export function usePlotLibrary() {
     }
 
     plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
+    inspectedPlotId.value = savedPlot.id;
   }
 
   /** 开始拖动说明卡片。 */
@@ -745,6 +750,7 @@ export function usePlotLibrary() {
     target: PlotContextTarget,
   ): Promise<void> {
     const targetPlotId = target.plotId ?? inspectedPlot.value?.id ?? currentPlot.value?.id ?? '';
+    const targetPlot = plots.value.find((plot) => plot.id === targetPlotId) ?? null;
 
     if (action === 'openPlot' && targetPlotId) {
       openPlot(targetPlotId);
@@ -757,13 +763,18 @@ export function usePlotLibrary() {
     }
 
     if (action === 'createChildPlot') {
-      await createChildPlot(targetPlotId || undefined);
+      if (!targetPlotId) {
+        errorMessage.value = '请先选择一个剧情块，再新建子剧情。';
+        return;
+      }
+
+      await createChildPlot(targetPlotId);
       return;
     }
 
     if (action === 'renamePlot' && targetPlotId) {
       inspectPlot(targetPlotId);
-      saveMessage.value = '可在右侧内容区直接修改剧情块名称。';
+      // saveMessage.value = '可在右侧内容区直接修改剧情块名称。';
       return;
     }
 
@@ -773,27 +784,36 @@ export function usePlotLibrary() {
     }
 
     if (action === 'createDescription') {
+      if (!targetPlotId) {
+        errorMessage.value = '请先选择一个剧情块，再新建说明卡片。';
+        return;
+      }
+
       await createDescriptionBlock(targetPlotId);
       return;
     }
 
     if (action === 'editDescription') {
+      if (targetPlot) {
+        inspectPlot(targetPlot.id);
+      }
+
       saveMessage.value = '可在说明卡片内直接编辑名称和内容。';
       return;
     }
 
     if (action === 'moveDescriptionUp' && target.descriptionId) {
-      await moveDescriptionBlock(target.descriptionId, 'up');
+      await moveDescriptionBlock(target.descriptionId, 'up', targetPlotId);
       return;
     }
 
     if (action === 'moveDescriptionDown' && target.descriptionId) {
-      await moveDescriptionBlock(target.descriptionId, 'down');
+      await moveDescriptionBlock(target.descriptionId, 'down', targetPlotId);
       return;
     }
 
     if (action === 'deleteDescription' && target.descriptionId) {
-      await deleteDescriptionBlock(target.descriptionId);
+      await deleteDescriptionBlock(target.descriptionId, targetPlotId);
     }
   }
 
