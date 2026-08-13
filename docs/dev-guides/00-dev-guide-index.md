@@ -36,6 +36,7 @@
 - `timeline/timeline-design-principles.md`：时间线模块设计原则。实现或调整 `Timeline.vue`、多时间线切换、时间块、事件卡片或事件详情前先阅读。
 - `timeline/timeline-page-design.md`：时间线页面功能设计。实现时间轴页面布局、时间块编辑弹框、事件详情弹框、事件拖拽交互或组件拆分前阅读。
 - `timeline/timeline-data-structure.md`：时间线数据结构设计。修改 `mock_data/timeline.json`、`src/types` 时间线类型、后续 `timeline/*.json` 持久化结构或拖拽布局保存前阅读。
+- `ai-assistant/ai-assistant-module-design.md`：AI小助手模块设计。修改 AI小助手聊天室、上下文挂载范围、占位回复或后续 AI 写作入口前阅读。
 
 ## 编写新指南
 

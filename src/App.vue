@@ -46,7 +46,7 @@ const navigationItems: NavigationItem[] = [
   { label: '关系', key: '/relations' },
   { label: '剧情', key: '/plots' },
   { label: '时间线', key: '/timeline' },
-  { label: 'AI 上下文', key: '/context-export' },
+  { label: 'AI小助手', key: '/ai-assistant' },
 ];
 
 /** 当前激活的菜单 key，与路由路径同步。 */

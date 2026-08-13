@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router';
+import AiAssistant from '@/views/AiAssistant.vue';
 import Characters from '@/views/Characters.vue';
-import ContextExport from '@/views/ContextExport.vue';
 import Items from '@/views/Items.vue';
 import Locations from '@/views/Locations.vue';
 import Plots from '@/views/Plots.vue';
@@ -53,10 +53,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '时间线' },
   },
   {
+    path: '/ai-assistant',
+    name: 'ai-assistant',
+    component: AiAssistant,
+    meta: { title: 'AI小助手' },
+  },
+  {
     path: '/context-export',
-    name: 'context-export',
-    component: ContextExport,
-    meta: { title: 'AI 上下文' },
+    redirect: '/ai-assistant',
   },
 ];
 

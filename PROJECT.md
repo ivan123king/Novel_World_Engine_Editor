@@ -36,6 +36,7 @@ npm run dev
 - `src/components/common/`：跨模块复用的 Vue 公共组件。
 - `src/router/`：renderer 页面路由配置，用于主工作台模块切换。
 - `src/views/`：主工作台右侧承载的模块页面。
+- `src/views/AiAssistant.vue`：AI小助手预留聊天室页面，当前只展示假消息，不接入真实 AI 或 JSON 写入。
 - `src/views/character/`：人物模块页面组件和本地状态逻辑。
 - `src/views/plot/`：剧情库模块的前端状态逻辑，当前阶段使用内存数据维护剧情树与 Inspector 交互。
 - `src/views/timeline/`：时间线模块拆分组件和工作台状态逻辑，`Timeline.vue` 只作为页面组装入口。
@@ -45,6 +46,7 @@ npm run dev
 - `data/system/`：应用系统文件目录，只保存上一次打开的项目目录等工具配置，不保存小说领域数据。
 - `docs/ai-guides/`：给后续 AI 使用的产品方向和架构说明。
 - `docs/dev-guides/`：给后续开发使用的具体实现设计说明，包含人物、物品、地图、关系图谱、时间线等模块指南。
+- `docs/dev-guides/ai-assistant/`：AI小助手模块设计说明。
 - `.codex/skills/`：Codex 本地 skill。
 
 ## 维护规则
