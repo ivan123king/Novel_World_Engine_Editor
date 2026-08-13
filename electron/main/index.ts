@@ -49,11 +49,16 @@ import {
   createProjectFromMenu,
   getCurrentProject,
   notifyCurrentProjectChanged,
+  openProjectFromDirectoryRecord,
   openProjectFromMenu,
   resolveCurrentProjectDirectory,
   restoreLastOpenedProject,
   saveProjectOverview,
 } from './projects/project-service';
+import {
+  deleteNovelDirectoryRecord,
+  loadNovelDirectoryRecords,
+} from './projects/novel-directory-records-service';
 
 /** Electron 主进程入口，负责窗口创建和安全 IPC 注册。 */
 
@@ -199,6 +204,22 @@ ipcMain.handle('system-config:save', async (_event, configText: string) => {
   }
 
   return savedConfigText;
+});
+
+ipcMain.handle('novel-directories:list', () => loadNovelDirectoryRecords());
+
+ipcMain.handle('novel-directories:delete', (_event, folderPath: string) =>
+  deleteNovelDirectoryRecord(folderPath),
+);
+
+ipcMain.handle('novel-directories:open', async (_event, folderPath: string) => {
+  const project = await openProjectFromDirectoryRecord(folderPath);
+
+  if (mainWindow) {
+    notifyCurrentProjectChanged(mainWindow);
+  }
+
+  return project;
 });
 
 ipcMain.handle('characters:list', (_event, baseDirPath?: string) =>

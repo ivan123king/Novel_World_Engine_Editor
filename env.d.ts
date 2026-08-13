@@ -8,6 +8,7 @@ import type {
   ListOrderFile,
   LocationFile,
   MapFile,
+  NovelDirectoryRecordsFile,
   PlotFile,
   RelationGraphFile,
   TimelineFile,
@@ -93,6 +94,10 @@ declare global {
       createProject: () => Promise<CurrentProject | null>;
       openProject: () => Promise<CurrentProject | null>;
       saveProjectOverview: (title: string, description: string) => Promise<CurrentProject>;
+      listNovelDirectoryRecords: () => Promise<NovelDirectoryRecordsFile>;
+      openNovelDirectoryRecord: (folderPath: string) => Promise<CurrentProject>;
+      deleteNovelDirectoryRecord: (folderPath: string) => Promise<NovelDirectoryRecordsFile>;
+      onOpenNovelDirectoryRecordsModal: (listener: () => void) => () => void;
       loadAiAssistantSettings: () => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantProjectId: (remoteProjectId: string) => Promise<AiAssistantSettings>;

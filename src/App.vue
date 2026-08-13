@@ -5,6 +5,7 @@
  */
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import NovelDirectoryRecordsModal from '@/components/project/NovelDirectoryRecordsModal.vue';
 import AboutDialog from '@/components/system/AboutDialog.vue';
 import SystemConfigEditorModal from '@/components/system/SystemConfigEditorModal.vue';
 import WorkbenchHeader from '@/components/workbench/WorkbenchHeader.vue';
@@ -93,6 +94,7 @@ onMounted(async () => {
     </n-layout>
 
     <SystemConfigEditorModal />
+    <NovelDirectoryRecordsModal />
     <AboutDialog />
   </n-layout>
 </template>

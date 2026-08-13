@@ -20,6 +20,7 @@
 - `common/common-components.md`：公共组件指南。新增或修改弹框、按钮、通用输入、空状态等跨模块组件前阅读。
 - `json-file-store.md`：本地 JSON 文件工具设计。修改 Electron main process 文件读写、目录解析、JSON 保存/读取、路径边界校验时阅读。
 - `project/project-directory-menu.md`：小说项目目录与 Electron 菜单设计。修改“小说 / 新建 / 打开”菜单、`novel.json` 项目入口、项目目录选择或当前项目状态流转前阅读。
+- `project/novel-directory-records.md`：小说目录记录弹框设计。修改“小说 / 小说目录”、已记录小说项目列表、快捷打开或删除目录记录前阅读。
 - `project/system-config-editor.md`：系统配置编辑器设计。修改菜单栏“系统 / 系统配置”、系统配置 JSON 弹框、`data/system/app-settings.json` 读取保存或保存后刷新当前项目状态前阅读。
 - `project/software-about-dialog.md`：软件关于弹框设计。修改菜单栏“系统 / 关于佳依创式”、软件名称展示、关于弹框背景图或应用作者联系方式展示前阅读。
 - `project-home-page.md`：项目首页页面设计。修改首页小说名、简介展示、双击编辑和 `novel.json` 首页字段保存前阅读。

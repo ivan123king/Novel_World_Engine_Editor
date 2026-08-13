@@ -7,6 +7,7 @@ import type {
   ItemFile,
   LocationFile,
   MapFile,
+  NovelDirectoryRecordsFile,
   PlotFile,
   RelationGraphFile,
   TimelineFile,
@@ -27,6 +28,23 @@ contextBridge.exposeInMainWorld('novelEngine', {
   openProject: () => ipcRenderer.invoke('projects:open'),
   saveProjectOverview: (title: string, description: string) =>
     ipcRenderer.invoke('projects:save-overview', title, description) as Promise<CurrentProject>,
+  listNovelDirectoryRecords: () =>
+    ipcRenderer.invoke('novel-directories:list') as Promise<NovelDirectoryRecordsFile>,
+  openNovelDirectoryRecord: (folderPath: string) =>
+    ipcRenderer.invoke('novel-directories:open', folderPath) as Promise<CurrentProject>,
+  deleteNovelDirectoryRecord: (folderPath: string) =>
+    ipcRenderer.invoke('novel-directories:delete', folderPath) as Promise<NovelDirectoryRecordsFile>,
+  onOpenNovelDirectoryRecordsModal: (listener: () => void) => {
+    const channelListener = () => {
+      listener();
+    };
+
+    ipcRenderer.on('novel-directories:open-list', channelListener);
+
+    return () => {
+      ipcRenderer.removeListener('novel-directories:open-list', channelListener);
+    };
+  },
   loadAiAssistantSettings: () =>
     ipcRenderer.invoke('ai-assistant:settings-load') as Promise<AiAssistantSettings>,
   saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) =>

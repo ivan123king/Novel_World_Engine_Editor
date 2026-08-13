@@ -11,6 +11,7 @@ import {
 import { ensureDirectory } from '../file-system/directory';
 import { loadJsonFileAs, saveJsonFile } from '../file-system/json-file-store';
 import { loadAppSettings, saveLastOpenedProjectPath } from '../system/app-settings-service';
+import { upsertNovelDirectoryRecord } from './novel-directory-records-service';
 
 /**
  * 小说项目服务。
@@ -150,6 +151,12 @@ async function setCurrentProject(project: CurrentProject, persistLastOpened: boo
 
   if (persistLastOpened) {
     await saveLastOpenedProjectPath(project.baseDir);
+
+    try {
+      await upsertNovelDirectoryRecord(project);
+    } catch {
+      // 小说目录记录属于便捷入口，写入失败不应阻断项目本身打开或创建成功。
+    }
   }
 
   return currentProject;
@@ -255,6 +262,30 @@ export async function openProjectDirectory(
 ): Promise<CurrentProject> {
   const project = await loadProjectFromDirectory(projectDirectory);
   return setCurrentProject(project, persistLastOpened);
+}
+
+/**
+ * 从小说目录记录中快捷打开指定项目。
+ * @param projectDirectory 已记录的小说项目目录
+ */
+export async function openProjectFromDirectoryRecord(projectDirectory: string): Promise<CurrentProject> {
+  const normalizedProjectDirectory = resolve(projectDirectory);
+
+  if (!(await pathExists(normalizedProjectDirectory))) {
+    throw new Error('该小说目录不存在，可能已被移动或删除。');
+  }
+
+  try {
+    return await openProjectDirectory(normalizedProjectDirectory, true);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+
+    if (message.includes('未找到 novel.json')) {
+      throw new Error('该目录不是有效的小说项目，未找到 novel.json。');
+    }
+
+    throw new Error(message || 'novel.json 文件结构无效，无法打开该小说项目。');
+  }
 }
 
 /**

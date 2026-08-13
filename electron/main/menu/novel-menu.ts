@@ -52,6 +52,18 @@ export function createNovelMenu(
           }
         },
       },
+      {
+        label: '小说目录',
+        click: () => {
+          const mainWindow = getMainWindow();
+
+          if (!mainWindow) {
+            return;
+          }
+
+          mainWindow.webContents.send('novel-directories:open-list');
+        },
+      },
     ],
   };
 }

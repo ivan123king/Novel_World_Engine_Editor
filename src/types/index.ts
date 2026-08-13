@@ -52,6 +52,14 @@ export {
   type NovelProjectFile,
 } from './project';
 export {
+  NOVEL_DIRECTORY_RECORDS_SCHEMA_VERSION,
+  createEmptyNovelDirectoryRecordsFile,
+  isNovelDirectoryRecord,
+  isNovelDirectoryRecordsFile,
+  type NovelDirectoryRecord,
+  type NovelDirectoryRecordsFile,
+} from './novel-directory-record';
+export {
   PLOT_SCHEMA_VERSION,
   createEmptyPlot,
   createEmptyPlotDescriptionBlock,
