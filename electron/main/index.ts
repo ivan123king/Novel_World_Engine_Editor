@@ -64,6 +64,15 @@ import {
 
 const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
+/** 应用窗口图标路径，开发版读取 build 目录，打包版读取 resources 目录。 */
+function resolveAppWindowIconPath(): string {
+  if (app.isPackaged) {
+    return join(process.resourcesPath, 'icon.png');
+  }
+
+  return join(process.cwd(), 'build/icon.png');
+}
+
 /** 当前主窗口引用，用于菜单动作和项目状态通知。 */
 let mainWindow: BrowserWindow | null = null;
 
@@ -76,6 +85,7 @@ function createWindow(): void {
     minHeight: 640,
     show: false,
     title: '佳依创式',
+    icon: resolveAppWindowIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,

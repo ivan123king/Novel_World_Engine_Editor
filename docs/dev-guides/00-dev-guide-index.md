@@ -18,6 +18,7 @@
 ## 当前文档
 
 - `common/common-components.md`：公共组件指南。新增或修改弹框、按钮、通用输入、空状态等跨模块组件前阅读。
+- `packaging-windows.md`：Windows 打包发布指南。准备把应用打包成 zip 绿色版或 nsis `.exe` 安装包前阅读。
 - `json-file-store.md`：本地 JSON 文件工具设计。修改 Electron main process 文件读写、目录解析、JSON 保存/读取、路径边界校验时阅读。
 - `project/project-directory-menu.md`：小说项目目录与 Electron 菜单设计。修改“小说 / 新建 / 打开”菜单、`novel.json` 项目入口、项目目录选择或当前项目状态流转前阅读。
 - `project/novel-directory-records.md`：小说目录记录弹框设计。修改“小说 / 小说目录”、已记录小说项目列表、快捷打开或删除目录记录前阅读。

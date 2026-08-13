@@ -17,6 +17,8 @@ npm run dev
 - `npm run build`：构建应用代码
 - `npm run typecheck`：执行 TypeScript 类型检查
 
+Windows zip 绿色版和 `.exe` 安装包发布步骤见 `docs/dev-guides/packaging-windows.md`。
+
 ## 文件分类
 
 - `electron/main/`：Electron 主进程，放项目打开、菜单、JSON 读写等本地能力。
