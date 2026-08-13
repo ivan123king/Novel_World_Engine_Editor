@@ -99,6 +99,7 @@ declare global {
       loadSystemConfigText: () => Promise<string>;
       saveSystemConfigText: (configText: string) => Promise<string>;
       onOpenSystemConfigEditor: (listener: () => void) => () => void;
+      onOpenAboutDialog: (listener: () => void) => () => void;
       onCurrentProjectChanged: (
         listener: (project: CurrentProject | null) => void,
       ) => () => void;

@@ -21,6 +21,7 @@
 - `json-file-store.md`：本地 JSON 文件工具设计。修改 Electron main process 文件读写、目录解析、JSON 保存/读取、路径边界校验时阅读。
 - `project/project-directory-menu.md`：小说项目目录与 Electron 菜单设计。修改“小说 / 新建 / 打开”菜单、`novel.json` 项目入口、项目目录选择或当前项目状态流转前阅读。
 - `project/system-config-editor.md`：系统配置编辑器设计。修改菜单栏“系统 / 系统配置”、系统配置 JSON 弹框、`data/system/app-settings.json` 读取保存或保存后刷新当前项目状态前阅读。
+- `project/software-about-dialog.md`：软件关于弹框设计。修改菜单栏“系统 / 关于佳依创式”、软件名称展示、关于弹框背景图或应用作者联系方式展示前阅读。
 - `project-home-page.md`：项目首页页面设计。修改首页小说名、简介展示、双击编辑和 `novel.json` 首页字段保存前阅读。
 - `list-order.md`：列表排序元数据设计。为人物、物品或后续资源列表新增拖动排序、保存展示顺序或恢复排序文件时阅读。
 - `main-workbench-layout.md`：主工作台整体页面结构。修改顶部项目栏、左侧模块导航、右侧页面容器、路由入口或 `mock_data/` 规则时阅读。

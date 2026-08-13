@@ -17,9 +17,9 @@ defineProps<WorkbenchHeaderProps>();
   <n-layout-header bordered class="workbench-header">
     <div class="workbench-header__content">
       <div class="workbench-header__identity">
-        <n-text depth="3" class="workbench-header__app-name">
+        <!-- <n-text depth="3" class="workbench-header__app-name">
           {{ appName }}
-        </n-text>
+        </n-text> -->
         <h1 class="workbench-header__title">
           {{ projectTitle }}
         </h1>

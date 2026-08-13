@@ -27,6 +27,18 @@ export function createSystemMenu(
           mainWindow.webContents.send('system-config:open-editor');
         },
       },
+      {
+        label: '关于佳依创式',
+        click: () => {
+          const mainWindow = getMainWindow();
+
+          if (!mainWindow) {
+            return;
+          }
+
+          mainWindow.webContents.send('about:open');
+        },
+      },
     ],
   };
 }

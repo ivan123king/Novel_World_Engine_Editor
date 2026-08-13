@@ -47,6 +47,17 @@ contextBridge.exposeInMainWorld('novelEngine', {
       ipcRenderer.removeListener('system-config:open-editor', channelListener);
     };
   },
+  onOpenAboutDialog: (listener: () => void) => {
+    const channelListener = () => {
+      listener();
+    };
+
+    ipcRenderer.on('about:open', channelListener);
+
+    return () => {
+      ipcRenderer.removeListener('about:open', channelListener);
+    };
+  },
   onCurrentProjectChanged: (listener: (project: CurrentProject | null) => void) => {
     const channelListener = (_event: IpcRendererEvent, project: CurrentProject | null) => {
       listener(project);

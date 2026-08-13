@@ -70,7 +70,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 640,
     show: false,
-    title: 'Novel World Engine Editor',
+    title: '佳依创式',
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
@@ -122,7 +122,7 @@ function createWindow(): void {
 }
 
 ipcMain.handle('app:get-info', () => ({
-  name: 'Novel World Engine Editor',
+  name: '佳依创式',
   version: app.getVersion(),
   storage: '本地 JSON 文件',
 }));

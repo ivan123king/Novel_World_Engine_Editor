@@ -5,6 +5,7 @@
  */
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AboutDialog from '@/components/system/AboutDialog.vue';
 import SystemConfigEditorModal from '@/components/system/SystemConfigEditorModal.vue';
 import WorkbenchHeader from '@/components/workbench/WorkbenchHeader.vue';
 import WorkbenchSidebar from '@/components/workbench/WorkbenchSidebar.vue';
@@ -19,7 +20,7 @@ interface AppInfo {
 
 /** 应用基础信息。 */
 const appInfo = ref<AppInfo>({
-  name: 'Novel World Engine Editor',
+  name: '佳依创式',
   version: '',
   storage: '本地 JSON 文件',
 });
@@ -92,6 +93,7 @@ onMounted(async () => {
     </n-layout>
 
     <SystemConfigEditorModal />
+    <AboutDialog />
   </n-layout>
 </template>
 
