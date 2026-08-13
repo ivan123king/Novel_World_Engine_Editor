@@ -44,6 +44,36 @@ export function getCurrentProject(): CurrentProject | null {
 }
 
 /**
+ * 保存小说项目首页可编辑信息。
+ * 只更新 `novel.json` 中的小说名和简介，并保留入口文件里的未知扩展字段。
+ */
+export async function saveProjectOverview(title: string, description: string): Promise<CurrentProject> {
+  if (!currentProject) {
+    throw new Error('尚未打开小说项目，无法保存小说信息');
+  }
+
+  const baseDir = currentProject.baseDir;
+  const novelFilePath = resolveNovelFilePath(baseDir);
+  const latestNovel = await loadJsonFileAs<NovelProjectFile>(novelFilePath, isNovelProjectFile);
+  const nextNovel: NovelProjectFile = {
+    ...latestNovel,
+    title,
+    folderPath: baseDir,
+    description,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveJsonFile(novelFilePath, nextNovel);
+
+  currentProject = {
+    baseDir,
+    novel: nextNovel,
+  };
+
+  return currentProject;
+}
+
+/**
  * 获取当前小说项目目录。
  * 模块 IPC 未显式传入 baseDirPath 时使用，避免继续写入系统 data 目录。
  */

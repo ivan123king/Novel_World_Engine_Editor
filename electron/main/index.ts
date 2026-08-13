@@ -51,6 +51,7 @@ import {
   openProjectFromMenu,
   resolveCurrentProjectDirectory,
   restoreLastOpenedProject,
+  saveProjectOverview,
 } from './projects/project-service';
 
 /** Electron 主进程入口，负责窗口创建和安全 IPC 注册。 */
@@ -159,6 +160,16 @@ ipcMain.handle('projects:open', async () => {
   const project = await openProjectFromMenu(mainWindow);
 
   if (project) {
+    notifyCurrentProjectChanged(mainWindow);
+  }
+
+  return project;
+});
+
+ipcMain.handle('projects:save-overview', async (_event, title: string, description: string) => {
+  const project = await saveProjectOverview(title, description);
+
+  if (mainWindow) {
     notifyCurrentProjectChanged(mainWindow);
   }
 

@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld('novelEngine', {
   restoreLastOpenedProject: () => ipcRenderer.invoke('projects:restore-last-opened'),
   createProject: () => ipcRenderer.invoke('projects:create'),
   openProject: () => ipcRenderer.invoke('projects:open'),
+  saveProjectOverview: (title: string, description: string) =>
+    ipcRenderer.invoke('projects:save-overview', title, description) as Promise<CurrentProject>,
   loadAiAssistantSettings: () =>
     ipcRenderer.invoke('ai-assistant:settings-load') as Promise<AiAssistantSettings>,
   saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) =>

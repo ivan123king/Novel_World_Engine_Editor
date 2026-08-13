@@ -35,6 +35,15 @@ export function openProject(): Promise<CurrentProject | null> {
 }
 
 /**
+ * 保存项目首页中的小说名和简介。
+ * @param title 小说名
+ * @param description 小说简介
+ */
+export function saveProjectOverview(title: string, description: string): Promise<CurrentProject> {
+  return getNovelEngineApi().saveProjectOverview(title, description);
+}
+
+/**
  * 监听当前项目变化。
  * @param listener 当前项目变化回调
  */

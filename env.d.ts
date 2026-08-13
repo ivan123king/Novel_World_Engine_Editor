@@ -92,6 +92,7 @@ declare global {
       restoreLastOpenedProject: () => Promise<CurrentProject | null>;
       createProject: () => Promise<CurrentProject | null>;
       openProject: () => Promise<CurrentProject | null>;
+      saveProjectOverview: (title: string, description: string) => Promise<CurrentProject>;
       loadAiAssistantSettings: () => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantProjectId: (remoteProjectId: string) => Promise<AiAssistantSettings>;

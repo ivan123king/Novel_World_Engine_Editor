@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import type { CurrentProject } from '@/types';
-import { getCurrentProject, onCurrentProjectChanged } from '@/api/projectApi';
+import { getCurrentProject, onCurrentProjectChanged, saveProjectOverview } from '@/api/projectApi';
 
 /**
  * 小说项目状态 store。
@@ -27,6 +27,17 @@ function setCurrentProject(project: CurrentProject | null): void {
   currentProject.value = project;
 }
 
+/**
+ * 保存项目首页可编辑字段，并同步 renderer 中的当前项目状态。
+ * @param title 小说名
+ * @param description 小说简介
+ */
+async function updateProjectOverview(title: string, description: string): Promise<CurrentProject> {
+  const project = await saveProjectOverview(title, description);
+  setCurrentProject(project);
+  return project;
+}
+
 /** 初始化当前项目状态并注册变化监听。 */
 async function initializeProjectStore(): Promise<void> {
   if (!hasRegisteredProjectListener) {
@@ -46,5 +57,6 @@ export function useProjectStore() {
     hasCurrentProject,
     setCurrentProject,
     initializeProjectStore,
+    updateProjectOverview,
   };
 }
