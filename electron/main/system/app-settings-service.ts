@@ -123,6 +123,18 @@ async function saveAppSettings(settingsFile: AppSettingsFile): Promise<AppSettin
 }
 
 /**
+ * 保存完整系统配置对象。
+ * @param settingsRecord 由系统配置编辑器提交的普通 JSON 对象
+ */
+export async function saveCompleteAppSettings(settingsRecord: Record<string, unknown>): Promise<AppSettingsFile> {
+  return saveAppSettings({
+    ...createAppSettingsFromRaw(settingsRecord),
+    updatedAt: new Date().toISOString(),
+    schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
+  });
+}
+
+/**
  * 保存上一次打开的小说项目目录。
  * @param projectPath 已成功打开或创建的小说项目目录
  */

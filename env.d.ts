@@ -96,6 +96,9 @@ declare global {
       loadAiAssistantSettings: () => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantServiceBaseUrl: (baseUrl: string) => Promise<AiAssistantSettings>;
       saveRemoteAiAssistantProjectId: (remoteProjectId: string) => Promise<AiAssistantSettings>;
+      loadSystemConfigText: () => Promise<string>;
+      saveSystemConfigText: (configText: string) => Promise<string>;
+      onOpenSystemConfigEditor: (listener: () => void) => () => void;
       onCurrentProjectChanged: (
         listener: (project: CurrentProject | null) => void,
       ) => () => void;

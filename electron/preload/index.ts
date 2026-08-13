@@ -33,6 +33,20 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('ai-assistant:service-url-save', baseUrl) as Promise<AiAssistantSettings>,
   saveRemoteAiAssistantProjectId: (remoteProjectId: string) =>
     ipcRenderer.invoke('ai-assistant:remote-project-id-save', remoteProjectId) as Promise<AiAssistantSettings>,
+  loadSystemConfigText: () => ipcRenderer.invoke('system-config:load') as Promise<string>,
+  saveSystemConfigText: (configText: string) =>
+    ipcRenderer.invoke('system-config:save', configText) as Promise<string>,
+  onOpenSystemConfigEditor: (listener: () => void) => {
+    const channelListener = () => {
+      listener();
+    };
+
+    ipcRenderer.on('system-config:open-editor', channelListener);
+
+    return () => {
+      ipcRenderer.removeListener('system-config:open-editor', channelListener);
+    };
+  },
   onCurrentProjectChanged: (listener: (project: CurrentProject | null) => void) => {
     const channelListener = (_event: IpcRendererEvent, project: CurrentProject | null) => {
       listener(project);

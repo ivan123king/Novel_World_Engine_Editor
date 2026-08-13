@@ -20,9 +20,9 @@ npm run dev
 ## 文件分类
 
 - `electron/main/`：Electron 主进程，放项目打开、菜单、JSON 读写等本地能力。
-- `electron/main/menu/`：Electron 顶部菜单配置，当前包含“小说 / 新建 / 打开”入口。
+- `electron/main/menu/`：Electron 顶部菜单配置，按 `app-menu` 总装配和 `novel-menu`、`system-menu`、`window-menu` 等一级菜单拆分。
 - `electron/main/projects/`：小说项目创建、打开、恢复和 `novel.json` 校验服务。
-- `electron/main/system/`：应用系统配置服务，管理 `data/system/app-settings.json` 等工具自身设置。
+- `electron/main/system/`：应用系统配置服务，管理 `data/system/app-settings.json` 等工具自身设置，并提供菜单触发的系统配置 JSON 弹框编辑能力。
 - `electron/main/characters/`：人物 JSON 文件读写服务，管理当前小说项目目录下的 `characters/*.json`。
 - `electron/main/items/`：物品 JSON 文件读写服务，管理当前小说项目目录下的 `items/*.json`。
 - `electron/main/plots/`：剧情库 JSON 文件读写服务，管理当前小说项目目录下的 `plots/*.json`。
@@ -34,6 +34,8 @@ npm run dev
 - `src/`：Vue3 前端界面。
 - `src/api/`：renderer 侧类型化 API 封装，负责调用 preload 暴露的安全接口。
 - `src/components/common/`：跨模块复用的 Vue 公共组件。
+- `src/components/workbench/`：主工作台外壳组件，例如顶部项目栏和左侧导航。
+- `src/components/system/`：系统级前端组件，例如菜单触发的系统配置 JSON 编辑弹框。
 - `src/router/`：renderer 页面路由配置，用于主工作台模块切换。
 - `src/views/`：主工作台右侧承载的模块页面。
 - `src/views/ProjectHome.vue`：项目首页，只展示当前小说目录 `novel.json` 中的小说名和简介，并支持双击编辑保存。

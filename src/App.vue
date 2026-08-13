@@ -1,24 +1,20 @@
 <script setup lang="ts">
 /**
  * 主工作台外壳组件。
- * 使用 Naive UI 的 Layout 系列组件构建整体布局，包括：
- * - 顶部项目栏（NLayoutHeader）
- * - 左侧模块导航（NLayoutSider + NMenu）
- * - 右侧页面容器（NLayoutContent + RouterView）
+ * 只负责装配顶部栏、左侧导航、右侧路由容器和全局系统弹框。
  */
-import { computed, onMounted, ref, h } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import SystemConfigEditorModal from '@/components/system/SystemConfigEditorModal.vue';
+import WorkbenchHeader from '@/components/workbench/WorkbenchHeader.vue';
+import WorkbenchSidebar from '@/components/workbench/WorkbenchSidebar.vue';
 import { useProjectStore } from '@/stores/projectStore';
+import type { WorkbenchNavigationItem } from '@/types/workbench';
 
 interface AppInfo {
   name: string;
   version: string;
   storage: string;
-}
-
-interface NavigationItem {
-  label: string;
-  key: string;
 }
 
 /** 应用基础信息。 */
@@ -36,9 +32,9 @@ const { currentProjectTitle, currentProjectPath } = projectStore;
 
 /**
  * 主导航菜单配置。
- * 使用 computed 保证响应式更新，key 与路由 path 保持一致。
+ * 后续新增模块入口时只需要扩展此数组，渲染细节由 WorkbenchSidebar 负责。
  */
-const navigationItems: NavigationItem[] = [
+const navigationItems: WorkbenchNavigationItem[] = [
   { label: '项目首页', key: '/' },
   { label: '人物', key: '/characters' },
   { label: '物品', key: '/items' },
@@ -49,23 +45,9 @@ const navigationItems: NavigationItem[] = [
   { label: 'AI小助手', key: '/ai-assistant' },
 ];
 
-/** 当前激活的菜单 key，与路由路径同步。 */
-const activeMenuKey = computed(() => route.path);
-
 /**
- * 菜单项渲染函数。
- * 将 NavigationItem 转换为 Naive UI Menu 需要的选项格式。
- */
-const menuOptions = computed(() =>
-  navigationItems.map((item) => ({
-    label: () => h('span', item.label),
-    key: item.key,
-  })),
-);
-
-/**
- * 处理菜单选择事件，跳转到对应路由。
- * @param key 被选中的菜单项 key（即路由 path）
+ * 处理工作台导航选择事件，跳转到对应模块路由。
+ * @param key 被选中的导航项 key，即路由 path
  */
 function handleMenuSelect(key: string): void {
   if (key !== route.path) {
@@ -77,63 +59,39 @@ onMounted(async () => {
   try {
     appInfo.value = await window.novelEngine.getAppInfo();
   } catch {
-    // Electron preload 未就绪时使用默认值
+    // Electron preload 未就绪时使用默认值。
   }
 
   try {
     await projectStore.initializeProjectStore();
   } catch {
-    // 项目状态初始化失败时维持未打开项目状态
+    // 项目状态初始化失败时维持未打开项目状态。
   }
 });
 </script>
 
 <template>
-  <!-- 主布局容器，使用 Naive UI 的 NLayout 组件 -->
+  <!-- 主布局容器，工作台区域由拆分组件装配。 -->
   <n-layout class="app-shell">
-    <!-- 顶部项目栏：展示应用名、项目名、项目元信息 -->
-    <n-layout-header bordered style="height: 76px; padding: 14px 22px">
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 100%">
-        <!-- 左侧：应用名 + 项目标题 -->
-        <div style="display: grid; gap: 5px; min-width: 0">
-          <n-text depth="3" style="font-size: 12px; line-height: 1">
-            {{ appInfo.name }}
-          </n-text>
-          <h1 style="margin: 0; font-size: 24px; font-weight: 700; line-height: 1.2; color: #17212b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-            {{ currentProjectTitle }}
-          </h1>
-          <n-text depth="3" style="font-size: 12px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-            {{ currentProjectPath || '通过“小说 > 新建”或“小说 > 打开”选择项目目录' }}
-          </n-text>
-        </div>
-       
-      </div>
-    </n-layout-header>
+    <WorkbenchHeader
+      :app-name="appInfo.name"
+      :project-title="currentProjectTitle"
+      :project-path="currentProjectPath"
+    />
 
-    <!-- 下方布局：左侧导航 + 右侧内容 -->
     <n-layout class="app-body" has-sider>
-      <!-- 左侧模块导航栏 -->
-      <n-layout-sider
-        bordered
-        collapse-mode="width"
-        :width="248"
-        :collapsed-width="64"
-        show-trigger
-      >
-        <!-- Naive UI 导航菜单 -->
-        <n-menu
-          :value="activeMenuKey"
-          :options="menuOptions"
-          :indent="20"
-          @update:value="handleMenuSelect"
-        />
-      </n-layout-sider>
+      <WorkbenchSidebar
+        :active-menu-key="route.path"
+        :items="navigationItems"
+        @select="handleMenuSelect"
+      />
 
-      <!-- 右侧页面内容区 -->
       <n-layout-content class="workbench-content" content-style="height: 100%; padding: 24px; overflow: auto">
         <RouterView />
       </n-layout-content>
     </n-layout>
+
+    <SystemConfigEditorModal />
   </n-layout>
 </template>
 

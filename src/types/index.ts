@@ -1,4 +1,5 @@
 export type { JsonObject, JsonPrimitive, JsonValue } from './json-value';
+export type { WorkbenchNavigationItem } from './workbench';
 export {
   createEmptyAiAssistantSettings,
   isAiAssistantSettings,

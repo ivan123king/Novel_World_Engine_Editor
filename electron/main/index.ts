@@ -43,7 +43,8 @@ import {
   saveRemoteAiAssistantProjectId,
   saveRemoteAiAssistantServiceBaseUrl,
 } from './system/app-settings-service';
-import { installNovelMenu } from './menu/novel-menu';
+import { loadSystemConfigText, saveSystemConfigText } from './system/system-config-editor-service';
+import { installAppMenu } from './menu/app-menu';
 import {
   createProjectFromMenu,
   getCurrentProject,
@@ -186,6 +187,20 @@ ipcMain.handle('ai-assistant:remote-project-id-save', (_event, remoteProjectId: 
   saveRemoteAiAssistantProjectId(remoteProjectId),
 );
 
+ipcMain.handle('system-config:load', () => loadSystemConfigText());
+
+ipcMain.handle('system-config:save', async (_event, configText: string) => {
+  const savedConfigText = await saveSystemConfigText(configText);
+
+  await restoreLastOpenedProject(mainWindow ?? undefined);
+
+  if (mainWindow) {
+    notifyCurrentProjectChanged(mainWindow);
+  }
+
+  return savedConfigText;
+});
+
 ipcMain.handle('characters:list', (_event, baseDirPath?: string) =>
   listCharacters(resolveCurrentProjectDirectory(baseDirPath)),
 );
@@ -295,7 +310,7 @@ ipcMain.handle(
 );
 
 app.whenReady().then(() => {
-  installNovelMenu(() => mainWindow);
+  installAppMenu(() => mainWindow);
   createWindow();
 
   app.on('activate', () => {
