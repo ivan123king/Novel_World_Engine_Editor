@@ -46,7 +46,7 @@ npm run dev
 - `data/system/`：应用系统文件目录，只保存上一次打开的项目目录等工具配置，不保存小说领域数据。
 - `docs/ai-guides/`：给后续 AI 使用的产品方向和架构说明。
 - `docs/dev-guides/`：给后续开发使用的具体实现设计说明，包含人物、物品、地图、关系图谱、时间线等模块指南。
-- `docs/dev-guides/ai-assistant/`：AI小助手模块设计说明。
+- `docs/dev-guides/ai-assistant/`：AI小助手与 Novel AI 服务设计说明；后续 AI 必须先读该目录的 `index.md`，再按需读取其他文档。
 - `.codex/skills/`：Codex 本地 skill。
 
 ## 维护规则
