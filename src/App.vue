@@ -120,12 +120,6 @@ onMounted(async () => {
         :collapsed-width="64"
         show-trigger
       >
-        <div style="padding: 18px 14px 10px">
-          <n-text strong style="font-size: 15px; color: #273646; margin: 0 8px 14px; display: block">
-            世界项目
-          </n-text>
-        </div>
-
         <!-- Naive UI 导航菜单 -->
         <n-menu
           :value="activeMenuKey"
