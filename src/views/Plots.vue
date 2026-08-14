@@ -398,11 +398,7 @@ onMounted(() => {
             <!-- 右侧 Inspector 展示的剧情简介区域。 -->
             <div class="summary-block">
               <div class="summary-header">
-                <n-input
-                  :value="inspectedPlot.title"
-                  placeholder="剧情块名称"
-                  @update:value="updateCurrentPlotField('title', $event)"
-                />
+                <n-text strong style="font-size: large;">{{ inspectedPlot.title }}</n-text>
                 <n-button type="error" :disabled="isSaving" @click="deletePlot(inspectedPlot.id)">
                   删除剧情块
                 </n-button>
