@@ -1,10 +1,5 @@
 import { computed, reactive, ref } from 'vue';
-import {
-  deleteItem as deleteItemFile,
-  listItems as loadItemFiles,
-  saveItem,
-  saveItemOrder,
-} from '@/api/itemApi';
+import { useRepositories } from '@/repositories/repositoryFactory';
 import {
   createEmptyItem,
   ITEM_SCHEMA_VERSION,
@@ -224,6 +219,7 @@ function moveEntityNear<T extends { id: string }>(
 
 /** 管理物品列表页的文件持久化状态和 UI 交互状态。 */
 export function useItemList() {
+  const { itemRepository } = useRepositories();
   const items = ref<ItemFile[]>([]);
   const searchKeyword = ref('');
   const selectedItemId = ref<string | null>(null);
@@ -267,19 +263,19 @@ export function useItemList() {
     Boolean(loadError.value || saveError.value || fileErrors.value.length),
   );
 
-  /** 保存当前物品 ID 顺序到本地排序元数据文件。 */
+  /** 保存当前物品 ID 顺序到物品 Repository。 */
   async function persistItemOrder(nextItems: ItemFile[]): Promise<void> {
-    await saveItemOrder(nextItems.map((item) => item.id));
+    await itemRepository.saveOrder(nextItems.map((item) => item.id));
   }
 
-  /** 从本地 JSON 文件重新读取物品列表。 */
+  /** 通过物品 Repository 重新读取物品列表。 */
   async function loadItems(): Promise<void> {
     isLoading.value = true;
     loadError.value = '';
     saveError.value = '';
 
     try {
-      const result = await loadItemFiles();
+      const result = await itemRepository.list();
       items.value = result.items;
       dataDirectory.value = result.baseDir;
       fileErrors.value = result.errors;
@@ -374,12 +370,12 @@ export function useItemList() {
 
     try {
       const nextItem = buildItemFromForm(editingItem.value ?? undefined);
-      const savedItem = await saveItem(nextItem);
+      const savedItem = await itemRepository.save(nextItem);
 
       if (editingItem.value) {
         items.value = items.value.map((item) => (item.id === savedItem.id ? savedItem : item));
       } else {
-        items.value = [...items.value, savedItem];
+        items.value = [ savedItem,...items.value];
       }
 
       selectedItemId.value = savedItem.id;
@@ -401,7 +397,7 @@ export function useItemList() {
     saveError.value = '';
 
     try {
-      await deleteItemFile(itemId);
+      await itemRepository.delete(itemId);
       const nextItems = items.value.filter((item) => item.id !== itemId);
 
       items.value = nextItems;
@@ -438,8 +434,8 @@ export function useItemList() {
         customFields: cloneCustomFields(item.customFields),
         schemaVersion: ITEM_SCHEMA_VERSION,
       };
-      const savedItem = await saveItem(nextItem);
-      const nextItems = [...items.value, savedItem];
+      const savedItem = await itemRepository.save(nextItem);
+      const nextItems = [ savedItem,...items.value];
 
       items.value = nextItems;
       selectedItemId.value = savedItem.id;

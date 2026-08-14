@@ -1,10 +1,5 @@
 import { computed, ref } from 'vue';
-import {
-  deleteCharacter as deleteCharacterFile,
-  listCharacters as loadCharacterFiles,
-  saveCharacter,
-  saveCharacterOrder,
-} from '@/api/characterApi';
+import { useRepositories } from '@/repositories/repositoryFactory';
 import {
   CHARACTER_SCHEMA_VERSION,
   createEmptyCharacter,
@@ -234,6 +229,7 @@ function moveEntityNear<T extends { id: string }>(
 
 /** 管理人物列表页的文件持久化状态和 UI 交互状态。 */
 export function useCharacterList() {
+  const { characterRepository } = useRepositories();
   const characters = ref<CharacterFile[]>([]);
   const selectedCharacterId = ref<string | null>(null);
   const editingCharacter = ref<CharacterFile | null>(null);
@@ -261,19 +257,19 @@ export function useCharacterList() {
       null,
   );
 
-  /** 保存当前人物 ID 顺序到本地排序元数据文件。 */
+  /** 保存当前人物 ID 顺序到人物 Repository。 */
   async function persistCharacterOrder(nextCharacters: CharacterFile[]): Promise<void> {
-    await saveCharacterOrder(nextCharacters.map((character) => character.id));
+    await characterRepository.saveOrder(nextCharacters.map((character) => character.id));
   }
 
-  /** 从本地 JSON 文件重新读取人物列表。 */
+  /** 通过人物 Repository 重新读取人物列表。 */
   async function loadCharacters(): Promise<void> {
     isLoading.value = true;
     loadError.value = '';
     saveError.value = '';
 
     try {
-      const result = await loadCharacterFiles();
+      const result = await characterRepository.list();
       characters.value = result.characters;
       dataDirectory.value = result.baseDir;
       fileErrors.value = result.errors;
@@ -352,8 +348,8 @@ export function useCharacterList() {
 
     try {
       const nextCharacter = buildCharacterFromForm(values);
-      const savedCharacter = await saveCharacter(nextCharacter);
-      const nextCharacters = [...characters.value, savedCharacter];
+      const savedCharacter = await characterRepository.save(nextCharacter);
+      const nextCharacters = [savedCharacter,...characters.value];
 
       characters.value = nextCharacters;
       selectedCharacterId.value = savedCharacter.id;
@@ -380,7 +376,7 @@ export function useCharacterList() {
 
     try {
       const nextCharacter = buildCharacterFromForm(values, currentCharacter);
-      const savedCharacter = await saveCharacter(nextCharacter);
+      const savedCharacter = await characterRepository.save(nextCharacter);
 
       characters.value = characters.value
         .map((character) => (character.id === characterId ? savedCharacter : character));
@@ -399,7 +395,7 @@ export function useCharacterList() {
     saveError.value = '';
 
     try {
-      await deleteCharacterFile(characterId);
+      await characterRepository.delete(characterId);
       const nextCharacters = characters.value.filter((character) => character.id !== characterId);
 
       characters.value = nextCharacters;
@@ -433,8 +429,8 @@ export function useCharacterList() {
         customFields: cloneCustomFields(character.customFields),
         schemaVersion: CHARACTER_SCHEMA_VERSION,
       };
-      const savedCharacter = await saveCharacter(nextCharacter);
-      const nextCharacters = [...characters.value, savedCharacter];
+      const savedCharacter = await characterRepository.save(nextCharacter);
+      const nextCharacters = [savedCharacter,...characters.value];
 
       characters.value = nextCharacters;
       selectedCharacterId.value = savedCharacter.id;
