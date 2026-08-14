@@ -4,6 +4,7 @@
  * 提供真实 JSON 文件驱动的剧情块分层浏览、说明卡片编辑和前端模拟右键菜单。
  */
 import { computed, nextTick, onMounted, reactive } from 'vue';
+import AppModal from '@/components/common/AppModal.vue';
 import type {
   PlotContextMenuAction,
   PlotContextTarget,
@@ -36,6 +37,8 @@ const {
   loadPlots,
   openPlot,
   updateCurrentPlotField,
+  getPlotTitle,
+  renamePlot,
   createRootPlot,
   createChildPlot,
   deletePlot,
@@ -66,6 +69,20 @@ const contextMenu = reactive<{
   target: null,
 });
 
+/** 右键重命名弹框状态，不依赖右侧 Inspector 的展示表单。 */
+const renameDialog = reactive<{
+  open: boolean;
+  plotId: string;
+  title: string;
+}>({
+  open: false,
+  plotId: '',
+  title: '',
+});
+
+/** 重命名表单是否可以提交。 */
+const canSubmitRename = computed(() => renameDialog.title.trim().length > 0 && !isSaving.value);
+
 /** 根据右键命中区域生成对应菜单项。 */
 const contextMenuOptions = computed(() => {
   const targetType = contextMenu.target?.targetType;
@@ -74,7 +91,7 @@ const contextMenuOptions = computed(() => {
     return [
       { label: '新建同级剧情', key: 'createSiblingPlot' },
       { label: '新建子剧情', key: 'createChildPlot' },
-      // { label: '重命名', key: 'renamePlot' },
+      { label: '重命名', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -84,7 +101,7 @@ const contextMenuOptions = computed(() => {
       { label: '进入剧情', key: 'openPlot' },
       { label: '新建同级剧情', key: 'createSiblingPlot' },
       { label: '新建子剧情', key: 'createChildPlot' },
-      // { label: '重命名', key: 'renamePlot' },
+      { label: '重命名', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -134,8 +151,54 @@ function handleContextMenuSelect(key: string | number): void {
     return;
   }
 
-  void handleContextMenuAction(key as PlotContextMenuAction, contextMenu.target);
+  const action = key as PlotContextMenuAction;
+
+  if (action === 'renamePlot') {
+    openRenameDialog(contextMenu.target);
+    contextMenu.show = false;
+    return;
+  }
+
+  void handleContextMenuAction(action, contextMenu.target);
   contextMenu.show = false;
+}
+
+/**
+ * 打开剧情块重命名弹框。
+ * @param target 右键命中的剧情块目标
+ */
+function openRenameDialog(target: PlotContextTarget): void {
+  if (!target.plotId) {
+    return;
+  }
+
+  renameDialog.plotId = target.plotId;
+  renameDialog.title = getPlotTitle(target.plotId) || '未命名剧情';
+  renameDialog.open = true;
+}
+
+/** 关闭剧情块重命名弹框。 */
+function closeRenameDialog(): void {
+  if (isSaving.value) {
+    return;
+  }
+
+  renameDialog.open = false;
+  renameDialog.plotId = '';
+  renameDialog.title = '';
+}
+
+/** 提交剧情块重命名。 */
+async function submitRename(): Promise<void> {
+  if (!renameDialog.plotId || !canSubmitRename.value) {
+    return;
+  }
+
+  const isRenamed = await renamePlot(renameDialog.plotId, renameDialog.title);
+
+  if (isRenamed) {
+    closeRenameDialog();
+  }
 }
 
 /**
@@ -172,6 +235,29 @@ onMounted(() => {
       @select="handleContextMenuSelect"
       @clickoutside="contextMenu.show = false"
     />
+
+    <!-- 右键重命名弹框：独立于右侧内容区，便于后续改造 Inspector 展示。 -->
+    <AppModal :open="renameDialog.open" title="重命名剧情块" :width="420" @close="closeRenameDialog">
+      <n-form label-placement="top" label-align="text">
+        <n-form-item label="剧情名称" required>
+          <n-input
+            v-model:value="renameDialog.title"
+            placeholder="请输入新的剧情名称"
+            clearable
+            @keyup.enter="submitRename"
+          />
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button :disabled="isSaving" @click="closeRenameDialog">取消</n-button>
+          <n-button type="primary" :loading="isSaving" :disabled="!canSubmitRename" @click="submitRename">
+            保存
+          </n-button>
+        </div>
+      </template>
+    </AppModal>
 
     <!-- 页面顶部：标题和当前数据状态。 -->
     <header class="plot-toolbar">
@@ -707,5 +793,12 @@ onMounted(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+}
+
+/** 弹框底部操作栏。 */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

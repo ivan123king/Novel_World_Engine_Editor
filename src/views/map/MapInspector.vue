@@ -94,7 +94,7 @@ const emit = defineEmits<{
           <n-input
             v-model:value="locationForm.description"
             type="textarea"
-            :autosize="{ minRows: 5, maxRows: 10 }"
+            :autosize="{ minRows: 3}"
             placeholder="填写地点介绍"
           />
         </n-form-item>
@@ -102,7 +102,7 @@ const emit = defineEmits<{
         <section class="custom-field-editor">
           <div class="custom-field-heading">
             <h3>自定义字段</h3>
-            <n-button type="primary" text @click="emit('addCustomField')">+ 新增字段</n-button>
+            <n-button type="primary" text @click="emit('addCustomField')">新增字段</n-button>
           </div>
           <div
             v-for="(row, index) in locationForm.customFields"

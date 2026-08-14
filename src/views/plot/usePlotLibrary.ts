@@ -480,6 +480,69 @@ export function usePlotLibrary() {
     void persistPlot(nextPlot);
   }
 
+  /**
+   * 从已缓存的完整剧情或轻量索引中读取剧情名称。
+   * 供右键重命名弹框初始化输入值，不依赖右侧 Inspector 当前展示状态。
+   */
+  function getPlotTitle(plotId: string): string {
+    return plotById.value.get(plotId)?.title ?? entryById.value.get(plotId)?.title ?? '';
+  }
+
+  /**
+   * 重命名指定剧情块并保存到本地 JSON 文件。
+   * 若目标剧情尚未加载完整详情，则先读取该剧情层级，但不切换当前页面层级。
+   */
+  async function renamePlot(plotId: string, title: string): Promise<boolean> {
+    const nextTitle = title.trim();
+
+    if (!nextTitle) {
+      errorMessage.value = '剧情名称不能为空。';
+      return false;
+    }
+
+    let targetPlot = plotById.value.get(plotId);
+
+    if (!targetPlot) {
+      try {
+        const result = await loadPlotLayerFile(plotId);
+        const entry = cachePlot(result.plot);
+
+        cacheEntries(result.breadcrumb.length > 0 ? result.breadcrumb : [entry]);
+        cacheChildren(result.plot.id, result.children);
+        fileErrors.value = result.errors;
+        dataDirectory.value = result.baseDir;
+        targetPlot = result.plot;
+      } catch (error) {
+        errorMessage.value = formatError(error);
+        return false;
+      }
+    }
+
+    const nextPlot: PlotFile = {
+      ...targetPlot,
+      title: nextTitle,
+    };
+
+    cachePlot(nextPlot);
+
+    if (currentPlotId.value) {
+      breadcrumbPlots.value = resolveCachedBreadcrumb(currentPlotId.value);
+    }
+
+    const savedPlot = await persistPlot(nextPlot);
+
+    if (!savedPlot) {
+      return false;
+    }
+
+    if (currentPlotId.value) {
+      breadcrumbPlots.value = resolveCachedBreadcrumb(currentPlotId.value);
+    }
+
+    saveMessage.value = '已重命名剧情块。';
+    return true;
+  }
+
   /** 创建根剧情块并保存到 `plots/*.json`。 */
   async function createRootPlot(): Promise<void> {
     const nextPlot = createEmptyPlot(createPlotId(), '未命名剧情块', null, rootPlots.value.length);
@@ -982,6 +1045,8 @@ export function usePlotLibrary() {
     openPlot,
     inspectPlot,
     updateCurrentPlotField,
+    getPlotTitle,
+    renamePlot,
     createRootPlot,
     createChildPlot,
     createSiblingPlot,
