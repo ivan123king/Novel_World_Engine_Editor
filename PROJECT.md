@@ -52,6 +52,7 @@ Windows zip 绿色版和 `.exe` 安装包发布步骤见 `docs/dev-guides/packag
 - `docs/ai-guides/`：给后续 AI 使用的产品方向和架构说明。
 - `docs/dev-guides/`：给后续开发使用的具体实现设计说明，包含人物、物品、地图、关系图谱、时间线等模块指南。
 - `docs/dev-guides/ai-assistant/`：AI小助手与 Novel AI 服务设计说明；后续 AI 必须先读该目录的 `index.md`，再按需读取其他文档。
+- `docs/dev-guides/cloud-migration/`：云改造设计说明；对外只暴露 `SKILL.md`，后续 AI 必须先读该入口，再按任务读取目录内指定文档。
 - `.codex/skills/`：Codex 本地 skill。
 
 ## 维护规则

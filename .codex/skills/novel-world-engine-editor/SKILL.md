@@ -33,6 +33,7 @@ description: 构建、扩展或审查 Novel World Engine Editor：一个本地 E
 - 实现 UI 模块前，阅读 `docs/ai-guides/04-feature-modules.md`。
 - 实现 prompt/context 生成或章节分析前，阅读 `docs/ai-guides/05-ai-context-export.md`。
 - 做阶段规划前，阅读 `docs/ai-guides/06-roadmap.md`。
+- 涉及 Repository、Web 版、Node.js 服务、远程项目、云同步或本地/云端存储切换时，先阅读 `docs/dev-guides/cloud-migration/SKILL.md`，禁止绕过该入口直接读取云改造目录内其他文档。
 
 ## 实现指导
 
