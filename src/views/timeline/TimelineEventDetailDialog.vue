@@ -158,8 +158,8 @@ function removeCustomField(index: number): void {
         <n-input
           :value="values.content"
           type="textarea"
-          placeholder="填写这个时间内发生的完整事件内容"
-          :autosize="{ minRows: 8, maxRows: 16 }"
+          placeholder="简述这个时间内发生的事件内容"
+          :autosize="{ minRows: 3}"
           @update:value="patchValues({ content: $event })"
         />
       </n-form-item>
@@ -167,7 +167,7 @@ function removeCustomField(index: number): void {
       <n-divider />
 
       <div class="custom-fields-header">
-        <n-text strong>自定义 key/value</n-text>
+        <n-text strong>自定义内容</n-text>
         <n-button type="primary" text @click="addCustomField">+ 添加字段</n-button>
       </div>
 
@@ -182,6 +182,8 @@ function removeCustomField(index: number): void {
           <span class="custom-field-equals">=</span>
           <n-input
             :value="field.value"
+            type="textarea"
+            autosize
             placeholder="请填写自定义内容"
             clearable
             @update:value="updateCustomField(index, { value: $event })"

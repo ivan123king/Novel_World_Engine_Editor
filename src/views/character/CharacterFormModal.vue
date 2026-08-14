@@ -198,13 +198,15 @@ watch(
         >
           <n-input
             v-model:value="field.key"
-            placeholder="key"
+            placeholder="名称"
             clearable
           />
           <span class="custom-field-equals">=</span>
           <n-input
             v-model:value="field.value"
-            placeholder="Value"
+            type="textarea"
+            autosize
+            placeholder="请填写自定义内容"
             clearable
           />
           <n-button

@@ -83,24 +83,26 @@ const emit = defineEmits<{
         </section>
       </div>
 
-      <div v-else class="field-stack">
-        <label>
-          地点名称
-          <input v-model="locationForm.name" type="text" placeholder="请输入地点名称" />
-        </label>
-        <label>
-          地点类型
-          <input v-model="locationForm.type" type="text" placeholder="地点" />
-        </label>
-        <label>
-          地点介绍
-          <textarea v-model="locationForm.description" rows="5" />
-        </label>
+      <n-form v-else class="field-stack" label-placement="top" label-align="text">
+        <n-form-item label="地点名称" required>
+          <n-input v-model:value="locationForm.name" placeholder="请输入地点名称" clearable />
+        </n-form-item>
+        <n-form-item label="地点类型">
+          <n-input v-model:value="locationForm.type" placeholder="地点" clearable />
+        </n-form-item>
+        <n-form-item label="地点介绍">
+          <n-input
+            v-model:value="locationForm.description"
+            type="textarea"
+            :autosize="{ minRows: 5, maxRows: 10 }"
+            placeholder="填写地点介绍"
+          />
+        </n-form-item>
 
         <section class="custom-field-editor">
           <div class="custom-field-heading">
             <h3>自定义字段</h3>
-            <button type="button" @click="emit('addCustomField')">新增字段</button>
+            <n-button type="primary" text @click="emit('addCustomField')">+ 新增字段</n-button>
           </div>
           <div
             v-for="(row, index) in locationForm.customFields"
@@ -108,15 +110,23 @@ const emit = defineEmits<{
             class="custom-field-row"
             :class="{ duplicate: isDuplicateFieldKey(row.key) }"
           >
-            <input v-model="row.key" type="text" placeholder="字段名" />
-            <textarea v-model="row.value" rows="3" placeholder="字段值" />
-            <button type="button" @click="emit('removeCustomField', index)">删除</button>
+            <n-input v-model:value="row.key" class="custom-field-key-input" placeholder="字段名" clearable/>
+            <n-button quaternary circle type="error" aria-label="删除自定义字段" @click="emit('removeCustomField', index)">
+              删除
+            </n-button>
+            <n-input
+              v-model:value="row.value"
+              class="custom-field-value-input"
+              type="textarea"
+              autosize
+              placeholder="字段值"
+            />
           </div>
           <div v-if="duplicateFieldKeys.length" class="edit-note">
             自定义字段名重复：{{ duplicateFieldKeys.join('、') }}
           </div>
         </section>
-      </div>
+      </n-form>
 
       <div class="inspector-actions">
         <template v-if="inspectorMode === 'detail'">
@@ -237,23 +247,6 @@ const emit = defineEmits<{
   color: #1d4ed8;
 }
 
-.field-stack label {
-  display: grid;
-  gap: 7px;
-  color: #475569;
-  font-size: 13px;
-}
-
-.field-stack input,
-.field-stack textarea {
-  width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 9px 10px;
-  color: #172033;
-  font: inherit;
-}
-
 .custom-field-editor {
   display: grid;
   gap: 10px;
@@ -264,16 +257,6 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-
-.custom-field-heading button,
-.custom-field-row button {
-  height: 30px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #334155;
-  cursor: pointer;
 }
 
 .custom-field-row {
@@ -287,14 +270,14 @@ const emit = defineEmits<{
   background: #f8fafc;
 }
 
-.custom-field-row textarea {
+.custom-field-value-input {
   grid-column: 1 / -1;
-  min-height: 72px;
-  resize: vertical;
 }
 
-.custom-field-row.duplicate input {
-  border-color: #dc2626;
+.custom-field-row.duplicate .custom-field-key-input {
+  --n-border: 1px solid #dc2626 !important;
+  --n-border-hover: 1px solid #dc2626 !important;
+  --n-border-focus: 1px solid #dc2626 !important;
 }
 
 .edit-note {
