@@ -36,6 +36,7 @@ const {
   hasErrorMessage,
   loadPlots,
   openPlot,
+  inspectPlot,
   updateCurrentPlotField,
   getPlotTitle,
   renamePlot,
@@ -370,7 +371,8 @@ onMounted(() => {
               type="button"
               :disabled="isSaving"
               :draggable="!isSaving && !isLoading"
-              @click="openPlot(plot.id)"
+              @click="inspectPlot(plot.id)"
+              @dblclick="openPlot(plot.id)"
               @dragstart="startPlotDrag(plot.id)"
               @dragenter="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
               @dragover.prevent="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"

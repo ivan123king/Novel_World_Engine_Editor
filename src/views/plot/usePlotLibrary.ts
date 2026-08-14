@@ -444,7 +444,7 @@ export function usePlotLibrary() {
     }
   }
 
-  /** 只切换右侧 Inspector 展示的剧情块；未加载详情时会进入该剧情层。 */
+  /** 只切换右侧 Inspector 展示的剧情块；未加载详情时只读取详情，不改变当前剧情层级。 */
   async function inspectPlot(plotId: string): Promise<void> {
     if (plotById.value.has(plotId)) {
       inspectedPlotId.value = plotId;
@@ -453,7 +453,38 @@ export function usePlotLibrary() {
       return;
     }
 
-    await openPlot(plotId);
+    if (!entryById.value.has(plotId)) {
+      return;
+    }
+
+    const requestToken = ++layerLoadToken;
+    isLayerLoading.value = true;
+    saveMessage.value = '';
+    errorMessage.value = '';
+
+    try {
+      const result = await loadPlotLayerFile(plotId);
+
+      if (requestToken !== layerLoadToken) {
+        return;
+      }
+
+      const entry = cachePlot(result.plot);
+
+      cacheEntries(result.breadcrumb.length > 0 ? result.breadcrumb : [entry]);
+      cacheChildren(result.plot.id, result.children);
+      fileErrors.value = result.errors;
+      dataDirectory.value = result.baseDir;
+      inspectedPlotId.value = result.plot.id;
+    } catch (error) {
+      if (requestToken === layerLoadToken) {
+        errorMessage.value = formatError(error);
+      }
+    } finally {
+      if (requestToken === layerLoadToken) {
+        isLayerLoading.value = false;
+      }
+    }
   }
 
   /** 更新右侧 Inspector 展示剧情块的基础字段，并保存对应 JSON 文件。 */
