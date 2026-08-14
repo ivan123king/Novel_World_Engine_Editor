@@ -61,13 +61,19 @@ export {
   type NovelDirectoryRecordsFile,
 } from './novel-directory-record';
 export {
+  PLOT_INDEX_SCHEMA_VERSION,
   PLOT_SCHEMA_VERSION,
   createEmptyPlot,
   createEmptyPlotDescriptionBlock,
+  createPlotIndexEntry,
   isPlotDescriptionBlock,
   isPlotFile,
+  isPlotIndexEntry,
+  isPlotIndexFile,
   type PlotDescriptionBlock,
   type PlotFile,
+  type PlotIndexEntry,
+  type PlotIndexFile,
 } from './plot';
 export {
   RELATION_GRAPH_SCHEMA_VERSION,

@@ -10,6 +10,7 @@ import type {
   MapFile,
   NovelDirectoryRecordsFile,
   PlotFile,
+  PlotIndexEntry,
   RelationGraphFile,
   SystemConfigEditorFile,
   TimelineFile,
@@ -45,6 +46,44 @@ declare global {
     plots: PlotFile[];
     /** 单个文件读取失败时的非致命错误。 */
     errors: string[];
+  }
+
+  /** 剧情库根节点读取结果，进入页面时只加载这份轻量数据。 */
+  interface PlotRootListResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 一级剧情块轻量索引。 */
+    roots: PlotIndexEntry[];
+    /** 当前索引中的剧情块总数。 */
+    totalCount: number;
+    /** 索引重建或单个文件读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
+  /** 剧情库单层读取结果，点击剧情块后加载详情和直接子剧情。 */
+  interface PlotLayerResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 当前剧情块完整详情。 */
+    plot: PlotFile;
+    /** 当前剧情块的直接子剧情轻量索引。 */
+    children: PlotIndexEntry[];
+    /** 当前剧情块的面包屑路径。 */
+    breadcrumb: PlotIndexEntry[];
+    /** 索引重建或单个文件读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
+  /** 剧情子树删除结果。 */
+  interface PlotDeleteResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 实际删除的剧情块 ID。 */
+    deletedIds: string[];
+    /** 被删除子树原本所在的父剧情 ID。 */
+    parentId: string | null;
+    /** 删除后同一父节点下剩余的直接子剧情。 */
+    siblings: PlotIndexEntry[];
   }
 
   /** 地图模块读取结果，和 preload 暴露的数据结构保持一致。 */
@@ -118,8 +157,15 @@ declare global {
       deleteItem: (itemId: string, baseDirPath?: string) => Promise<void>;
       saveItemOrder: (itemIds: string[], baseDirPath?: string) => Promise<void>;
       listPlots: (baseDirPath?: string) => Promise<PlotListResult>;
+      listPlotRoots: (baseDirPath?: string) => Promise<PlotRootListResult>;
+      loadPlotLayer: (plotId: string, baseDirPath?: string) => Promise<PlotLayerResult>;
       savePlot: (plot: PlotFile, baseDirPath?: string) => Promise<PlotFile>;
-      deletePlot: (plotId: string, baseDirPath?: string) => Promise<void>;
+      savePlotOrder: (
+        parentId: string | null,
+        orderedPlotIds: string[],
+        baseDirPath?: string,
+      ) => Promise<PlotIndexEntry[]>;
+      deletePlot: (plotId: string, baseDirPath?: string) => Promise<PlotDeleteResult>;
       listMapModule: (baseDirPath?: string) => Promise<MapModuleResult>;
       saveLocation: (location: LocationFile, baseDirPath?: string) => Promise<LocationFile>;
       deleteLocation: (locationId: string, baseDirPath?: string) => Promise<void>;

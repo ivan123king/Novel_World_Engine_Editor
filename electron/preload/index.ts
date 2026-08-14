@@ -9,6 +9,7 @@ import type {
   MapFile,
   NovelDirectoryRecordsFile,
   PlotFile,
+  PlotIndexEntry,
   RelationGraphFile,
   SystemConfigEditorFile,
   TimelineFile,
@@ -110,8 +111,13 @@ contextBridge.exposeInMainWorld('novelEngine', {
 
   //剧情库模块
   listPlots: (baseDirPath?: string) => ipcRenderer.invoke('plots:list', baseDirPath),
+  listPlotRoots: (baseDirPath?: string) => ipcRenderer.invoke('plots:list-roots', baseDirPath),
+  loadPlotLayer: (plotId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('plots:load-layer', plotId, baseDirPath),
   savePlot: (plot: PlotFile, baseDirPath?: string) =>
     ipcRenderer.invoke('plots:save', plot, baseDirPath),
+  savePlotOrder: (parentId: string | null, orderedPlotIds: string[], baseDirPath?: string) =>
+    ipcRenderer.invoke('plots:save-order', parentId, orderedPlotIds, baseDirPath) as Promise<PlotIndexEntry[]>,
   deletePlot: (plotId: string, baseDirPath?: string) =>
     ipcRenderer.invoke('plots:delete', plotId, baseDirPath),
 

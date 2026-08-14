@@ -21,9 +21,39 @@
 ```text
 novel-project/
   plots/
+    index.json
     plot_qixuanmen.json
     plot_molao.json
 ```
+
+## `plots/index.json`
+
+剧情库进入页面时只读取 `plots/index.json`，不要一次性读取全部 `plots/*.json` 详情文件。
+索引只保存分层列表和导航需要的轻量字段：
+
+```json
+{
+  "entries": [
+    {
+      "id": "plot_qixuanmen",
+      "title": "七玄门",
+      "summary": "主角进入七玄门后的早期剧情。",
+      "parentId": null,
+      "order": 0,
+      "childCount": 2
+    }
+  ],
+  "schemaVersion": 1
+}
+```
+
+运行规则：
+
+- 进入剧情页只读取根节点索引。
+- 点击剧情块时读取该剧情块详情 JSON 和它的直接子剧情索引。
+- 保存剧情块时同步更新对应索引条目的 `title`、`summary`、`parentId`、`order` 和 `childCount`。
+- 删除剧情块时由 Electron main process 根据索引计算并删除整棵子树。
+- 旧项目缺少索引时，main process 可以扫描一次 `plots/*.json` 自动补建索引；后续正常加载不再全量读取详情。
 
 ## 调用链
 

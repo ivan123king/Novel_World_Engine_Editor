@@ -4,11 +4,14 @@ import {
   createEmptyPlotDescriptionBlock,
   type PlotDescriptionBlock,
   type PlotFile,
+  type PlotIndexEntry,
 } from '@/types';
 import {
   deletePlot as deletePlotFile,
-  listPlots as loadPlotFiles,
+  listPlotRoots,
+  loadPlotLayer as loadPlotLayerFile,
   savePlot,
+  savePlotOrder,
 } from '@/api/plotApi';
 
 /** 剧情库右键菜单目标类型。 */
@@ -50,8 +53,20 @@ function createDescriptionId(): string {
   return `desc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 按排序字段稳定排序剧情块。 */
-function sortPlotsByOrder(left: PlotFile, right: PlotFile): number {
+/** 从完整剧情块创建轻量索引条目。 */
+function createEntryFromPlot(plot: PlotFile, childCount = 0): PlotIndexEntry {
+  return {
+    id: plot.id,
+    title: plot.title,
+    summary: plot.summary,
+    parentId: plot.parentId,
+    order: plot.order,
+    childCount,
+  };
+}
+
+/** 按排序字段稳定排序剧情索引条目。 */
+function sortPlotEntries(left: PlotIndexEntry, right: PlotIndexEntry): number {
   if (left.order !== right.order) {
     return left.order - right.order;
   }
@@ -71,121 +86,6 @@ function sortDescriptionsByOrder(
   return left.title.localeCompare(right.title, 'zh-CN');
 }
 
-/** 收集指定剧情块的所有后代 ID。 */
-function collectDescendantIds(plotId: string, plots: PlotFile[]): Set<string> {
-  const descendantIds = new Set<string>();
-  const childrenByParentId = new Map<string, PlotFile[]>();
-
-  plots.forEach((plot) => {
-    if (!plot.parentId) {
-      return;
-    }
-
-    const siblings = childrenByParentId.get(plot.parentId) ?? [];
-    siblings.push(plot);
-    childrenByParentId.set(plot.parentId, siblings);
-  });
-
-  function visit(parentId: string): void {
-    const children = childrenByParentId.get(parentId) ?? [];
-
-    children.forEach((child) => {
-      descendantIds.add(child.id);
-      visit(child.id);
-    });
-  }
-
-  visit(plotId);
-  return descendantIds;
-}
-
-/** 获取某剧情块的全部祖先和自身，用于面包屑。 */
-function resolveBreadcrumb(plotId: string | null, plots: PlotFile[]): PlotFile[] {
-  if (!plotId) {
-    return [];
-  }
-
-  const plotById = new Map(plots.map((plot) => [plot.id, plot]));
-  const breadcrumb: PlotFile[] = [];
-  let cursor: string | null = plotId;
-  const visitedIds = new Set<string>();
-
-  while (cursor) {
-    if (visitedIds.has(cursor)) {
-      break;
-    }
-
-    visitedIds.add(cursor);
-    const plot = plotById.get(cursor);
-
-    if (!plot) {
-      break;
-    }
-
-    breadcrumb.unshift(plot);
-    cursor = plot.parentId;
-  }
-
-  return breadcrumb;
-}
-
-/** 为同一父节点下的剧情块重写连续排序。 */
-function normalizeSiblingOrder(plots: PlotFile[], parentId: string | null): PlotFile[] {
-  const siblingIds = plots
-    .filter((plot) => plot.parentId === parentId)
-    .sort(sortPlotsByOrder)
-    .map((plot) => plot.id);
-
-  return plots.map((plot) => {
-    const order = siblingIds.indexOf(plot.id);
-    return order >= 0 ? { ...plot, order } : plot;
-  });
-}
-
-/**
- * 将同一父剧情下的剧情块移动到目标剧情块前后。
- * 不跨父节点调整层级，避免拖拽排序意外改变剧情结构。
- */
-function moveSiblingPlotNear(
-  plots: PlotFile[],
-  movedPlotId: string,
-  targetPlotId: string,
-  placement: PlotDropPlacement,
-): PlotFile[] {
-  if (movedPlotId === targetPlotId) {
-    return plots;
-  }
-
-  const movedPlot = plots.find((plot) => plot.id === movedPlotId);
-  const targetPlot = plots.find((plot) => plot.id === targetPlotId);
-
-  if (!movedPlot || !targetPlot || movedPlot.parentId !== targetPlot.parentId) {
-    return plots;
-  }
-
-  const orderedSiblingIds = plots
-    .filter((plot) => plot.parentId === movedPlot.parentId)
-    .sort(sortPlotsByOrder)
-    .map((plot) => plot.id)
-    .filter((plotId) => plotId !== movedPlotId);
-  const targetIndex = orderedSiblingIds.indexOf(targetPlotId);
-
-  if (targetIndex < 0) {
-    return plots;
-  }
-
-  orderedSiblingIds.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movedPlotId);
-
-  return plots.map((plot) => {
-    if (plot.parentId !== movedPlot.parentId) {
-      return plot;
-    }
-
-    const order = orderedSiblingIds.indexOf(plot.id);
-    return order >= 0 ? { ...plot, order } : plot;
-  });
-}
-
 /** 为说明卡片重写连续排序。 */
 function normalizeDescriptionOrder(descriptions: PlotDescriptionBlock[]): PlotDescriptionBlock[] {
   return descriptions
@@ -196,21 +96,65 @@ function normalizeDescriptionOrder(descriptions: PlotDescriptionBlock[]): PlotDe
     }));
 }
 
+/**
+ * 将同一父剧情下的剧情块移动到目标剧情块前后。
+ * 不跨父节点调整层级，避免拖拽排序意外改变剧情结构。
+ */
+function moveSiblingEntryNear(
+  entries: PlotIndexEntry[],
+  movedPlotId: string,
+  targetPlotId: string,
+  placement: PlotDropPlacement,
+): PlotIndexEntry[] {
+  if (movedPlotId === targetPlotId) {
+    return entries;
+  }
+
+  const movedEntry = entries.find((entry) => entry.id === movedPlotId);
+  const targetEntry = entries.find((entry) => entry.id === targetPlotId);
+
+  if (!movedEntry || !targetEntry || movedEntry.parentId !== targetEntry.parentId) {
+    return entries;
+  }
+
+  const orderedIds = [...entries]
+    .sort(sortPlotEntries)
+    .map((entry) => entry.id)
+    .filter((plotId) => plotId !== movedPlotId);
+  const targetIndex = orderedIds.indexOf(targetPlotId);
+
+  if (targetIndex < 0) {
+    return entries;
+  }
+
+  orderedIds.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movedPlotId);
+
+  return orderedIds.map((plotId, order) => ({
+    ...entries.find((entry) => entry.id === plotId)!,
+    order,
+  }));
+}
+
 /** 将未知错误格式化成可以展示给作者的文本。 */
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** 剧情库页面的文件持久化状态和交互逻辑。 */
+/** 剧情库页面的索引化持久化状态和交互逻辑。 */
 export function usePlotLibrary() {
-  const plots = ref<PlotFile[]>([]);
+  const plotById = ref(new Map<string, PlotFile>());
+  const entryById = ref(new Map<string, PlotIndexEntry>());
+  const childrenByParentId = ref(new Map<string | null, PlotIndexEntry[]>());
   const currentPlotId = ref<string | null>(null);
   const inspectedPlotId = ref<string | null>(null);
+  const breadcrumbPlots = ref<PlotIndexEntry[]>([]);
+  const totalPlotCount = ref(0);
   const saveMessage = ref('');
   const errorMessage = ref('');
   const fileErrors = ref<string[]>([]);
   const dataDirectory = ref('');
   const isLoading = ref(false);
+  const isLayerLoading = ref(false);
   const isSaving = ref(false);
   const draggingPlotId = ref<string | null>(null);
   const dragOverPlotId = ref<string | null>(null);
@@ -218,32 +162,32 @@ export function usePlotLibrary() {
   const draggingDescriptionId = ref<string | null>(null);
   const dragOverDescriptionId = ref<string | null>(null);
   const plotSaveQueues = new Map<string, Promise<PlotFile | null>>();
+  let layerLoadToken = 0;
 
+  const plots = computed(() => Array.from(plotById.value.values()));
   const rootPlots = computed(() =>
-    plots.value.filter((plot) => plot.parentId === null).sort(sortPlotsByOrder),
+    [...(childrenByParentId.value.get(null) ?? [])].sort(sortPlotEntries),
   );
 
-  const currentPlot = computed(
-    () => plots.value.find((plot) => plot.id === currentPlotId.value) ?? null,
+  const currentPlot = computed(() =>
+    currentPlotId.value ? plotById.value.get(currentPlotId.value) ?? null : null,
   );
 
-  /** 右侧 Inspector 当前展示的剧情块，支持子剧情单击预览。 */
+  /** 右侧 Inspector 当前展示的剧情块，懒加载后只包含已读取详情的节点。 */
   const inspectedPlot = computed(() => {
     if (inspectedPlotId.value) {
-      return plots.value.find((plot) => plot.id === inspectedPlotId.value) ?? currentPlot.value;
+      return plotById.value.get(inspectedPlotId.value) ?? currentPlot.value;
     }
 
     return currentPlot.value;
   });
 
-  const breadcrumbPlots = computed(() => resolveBreadcrumb(currentPlotId.value, plots.value));
-
   const childPlots = computed(() => {
-    if (!currentPlot.value) {
+    if (!currentPlotId.value) {
       return [];
     }
 
-    return plots.value.filter((plot) => plot.parentId === currentPlot.value?.id).sort(sortPlotsByOrder);
+    return [...(childrenByParentId.value.get(currentPlotId.value) ?? [])].sort(sortPlotEntries);
   });
 
   const currentDescriptionBlocks = computed(() =>
@@ -257,7 +201,146 @@ export function usePlotLibrary() {
     Boolean(errorMessage.value || fileErrors.value.length),
   );
 
-  /** 将单个剧情块保存到本地 JSON 文件。 */
+  /** 在缓存中批量写入剧情索引条目。 */
+  function cacheEntries(entries: PlotIndexEntry[]): void {
+    const nextEntryById = new Map(entryById.value);
+
+    entries.forEach((entry) => {
+      nextEntryById.set(entry.id, entry);
+    });
+
+    entryById.value = nextEntryById;
+  }
+
+  /**
+   * 缓存某个父剧情下的直接子剧情索引。
+   * @param parentId 父剧情 ID，根层传 null
+   * @param children 直接子剧情索引
+   */
+  function cacheChildren(parentId: string | null, children: PlotIndexEntry[]): void {
+    const sortedChildren = [...children].sort(sortPlotEntries);
+    const nextChildrenByParentId = new Map(childrenByParentId.value);
+
+    nextChildrenByParentId.set(parentId, sortedChildren);
+    childrenByParentId.value = nextChildrenByParentId;
+    cacheEntries(sortedChildren);
+  }
+
+  /** 缓存完整剧情详情，并同步轻量索引标题、简介和排序。 */
+  function cachePlot(plot: PlotFile): PlotIndexEntry {
+    const nextPlotById = new Map(plotById.value);
+    const currentEntry = entryById.value.get(plot.id);
+    const knownChildren = childrenByParentId.value.get(plot.id);
+    const entry = createEntryFromPlot(plot, currentEntry?.childCount ?? knownChildren?.length ?? 0);
+
+    nextPlotById.set(plot.id, plot);
+    plotById.value = nextPlotById;
+    cacheEntries([entry]);
+    replaceEntryInChildren(entry);
+
+    return entry;
+  }
+
+  /** 替换已缓存子列表中的同 ID 索引条目。 */
+  function replaceEntryInChildren(entry: PlotIndexEntry): void {
+    const nextChildrenByParentId = new Map(childrenByParentId.value);
+
+    nextChildrenByParentId.forEach((children, parentId) => {
+      if (!children.some((child) => child.id === entry.id)) {
+        return;
+      }
+
+      nextChildrenByParentId.set(
+        parentId,
+        children.map((child) => (child.id === entry.id ? entry : child)).sort(sortPlotEntries),
+      );
+    });
+
+    childrenByParentId.value = nextChildrenByParentId;
+  }
+
+  /** 将新索引条目追加进已缓存的同级列表。 */
+  function appendEntryToCachedChildren(entry: PlotIndexEntry): void {
+    const siblings = childrenByParentId.value.get(entry.parentId);
+
+    if (!siblings) {
+      return;
+    }
+
+    cacheChildren(entry.parentId, [...siblings, entry]);
+  }
+
+  /** 更新某个索引条目的直接子剧情数量。 */
+  function updateEntryChildCount(plotId: string, childCount: number): void {
+    const entry = entryById.value.get(plotId);
+
+    if (!entry) {
+      return;
+    }
+
+    const nextEntry = {
+      ...entry,
+      childCount,
+    };
+
+    cacheEntries([nextEntry]);
+    replaceEntryInChildren(nextEntry);
+  }
+
+  /** 从已缓存索引中解析面包屑路径。 */
+  function resolveCachedBreadcrumb(plotId: string): PlotIndexEntry[] {
+    const breadcrumb: PlotIndexEntry[] = [];
+    let cursor: string | null = plotId;
+    const visitedIds = new Set<string>();
+
+    while (cursor) {
+      if (visitedIds.has(cursor)) {
+        break;
+      }
+
+      visitedIds.add(cursor);
+      const entry = entryById.value.get(cursor);
+
+      if (!entry) {
+        break;
+      }
+
+      breadcrumb.unshift(entry);
+      cursor = entry.parentId;
+    }
+
+    return breadcrumb;
+  }
+
+  /** 从缓存中移除一批剧情块。 */
+  function removePlotsFromCache(plotIds: string[]): void {
+    const removedIds = new Set(plotIds);
+    const nextPlotById = new Map(plotById.value);
+    const nextEntryById = new Map(entryById.value);
+    const nextChildrenByParentId = new Map<string | null, PlotIndexEntry[]>();
+
+    plotIds.forEach((plotId) => {
+      nextPlotById.delete(plotId);
+      nextEntryById.delete(plotId);
+    });
+
+    childrenByParentId.value.forEach((children, parentId) => {
+      if (parentId && removedIds.has(parentId)) {
+        return;
+      }
+
+      nextChildrenByParentId.set(
+        parentId,
+        children.filter((child) => !removedIds.has(child.id)),
+      );
+    });
+
+    plotById.value = nextPlotById;
+    entryById.value = nextEntryById;
+    childrenByParentId.value = nextChildrenByParentId;
+  }
+
+  /** 将单个剧情块保存到本地 JSON 文件并同步本地缓存。 */
   async function persistPlot(plot: PlotFile): Promise<PlotFile | null> {
     const previousSave = plotSaveQueues.get(plot.id) ?? Promise.resolve(null);
     const nextSave = previousSave
@@ -267,6 +350,7 @@ export function usePlotLibrary() {
 
         try {
           const savedPlot = await savePlot(plot);
+          cachePlot(savedPlot);
           errorMessage.value = '';
           return savedPlot;
         } catch (error) {
@@ -286,60 +370,90 @@ export function usePlotLibrary() {
     });
   }
 
-  /** 从当前小说项目目录读取剧情块列表。 */
+  /** 从当前小说项目目录读取一级剧情块索引。 */
   async function loadPlots(): Promise<void> {
     isLoading.value = true;
     errorMessage.value = '';
     saveMessage.value = '';
+    layerLoadToken += 1;
+    isLayerLoading.value = false;
 
     try {
-      const result = await loadPlotFiles();
-      plots.value = result.plots;
+      const result = await listPlotRoots();
+
+      plotById.value = new Map();
+      entryById.value = new Map();
+      childrenByParentId.value = new Map();
+      cacheChildren(null, result.roots);
       fileErrors.value = result.errors;
       dataDirectory.value = result.baseDir;
-
-      if (currentPlotId.value && plots.value.some((plot) => plot.id === currentPlotId.value)) {
-        if (!inspectedPlotId.value || !plots.value.some((plot) => plot.id === inspectedPlotId.value)) {
-          inspectedPlotId.value = currentPlotId.value;
-        }
-
-        return;
-      }
-
-      currentPlotId.value = rootPlots.value[0]?.id ?? plots.value[0]?.id ?? null;
-      inspectedPlotId.value = currentPlotId.value;
-    } catch (error) {
-      plots.value = [];
-      fileErrors.value = [];
+      totalPlotCount.value = result.totalCount;
       currentPlotId.value = null;
       inspectedPlotId.value = null;
+      breadcrumbPlots.value = [];
+    } catch (error) {
+      plotById.value = new Map();
+      entryById.value = new Map();
+      childrenByParentId.value = new Map();
+      fileErrors.value = [];
+      totalPlotCount.value = 0;
+      currentPlotId.value = null;
+      inspectedPlotId.value = null;
+      breadcrumbPlots.value = [];
       errorMessage.value = formatError(error);
     } finally {
       isLoading.value = false;
     }
   }
 
-  /** 进入指定剧情层。 */
-  function openPlot(plotId: string): void {
-    if (!plots.value.some((plot) => plot.id === plotId)) {
+  /** 进入指定剧情层，并读取它的详情和直接子剧情。 */
+  async function openPlot(plotId: string): Promise<void> {
+    if (!entryById.value.has(plotId) && !plotById.value.has(plotId)) {
       return;
     }
 
-    currentPlotId.value = plotId;
-    inspectedPlotId.value = plotId;
+    const requestToken = ++layerLoadToken;
+    isLayerLoading.value = true;
     saveMessage.value = '';
     errorMessage.value = '';
+
+    try {
+      const result = await loadPlotLayerFile(plotId);
+
+      if (requestToken !== layerLoadToken) {
+        return;
+      }
+
+      const entry = cachePlot(result.plot);
+
+      cacheEntries(result.breadcrumb);
+      cacheChildren(result.plot.id, result.children);
+      fileErrors.value = result.errors;
+      dataDirectory.value = result.baseDir;
+      currentPlotId.value = result.plot.id;
+      inspectedPlotId.value = result.plot.id;
+      breadcrumbPlots.value = result.breadcrumb.length > 0 ? result.breadcrumb : [entry];
+    } catch (error) {
+      if (requestToken === layerLoadToken) {
+        errorMessage.value = formatError(error);
+      }
+    } finally {
+      if (requestToken === layerLoadToken) {
+        isLayerLoading.value = false;
+      }
+    }
   }
 
-  /** 只切换右侧 Inspector 展示的剧情块，不改变当前剧情层级。 */
-  function inspectPlot(plotId: string): void {
-    if (!plots.value.some((plot) => plot.id === plotId)) {
+  /** 只切换右侧 Inspector 展示的剧情块；未加载详情时会进入该剧情层。 */
+  async function inspectPlot(plotId: string): Promise<void> {
+    if (plotById.value.has(plotId)) {
+      inspectedPlotId.value = plotId;
+      saveMessage.value = '';
+      errorMessage.value = '';
       return;
     }
 
-    inspectedPlotId.value = plotId;
-    saveMessage.value = '';
-    errorMessage.value = '';
+    await openPlot(plotId);
   }
 
   /** 更新右侧 Inspector 展示剧情块的基础字段，并保存对应 JSON 文件。 */
@@ -350,24 +464,20 @@ export function usePlotLibrary() {
       return;
     }
 
-    let nextPlot: PlotFile | null = null;
+    const current = plotById.value.get(plotId);
 
-    plots.value = plots.value.map((plot) => {
-      if (plot.id !== plotId) {
-        return plot;
-      }
-
-      nextPlot = {
-        ...plot,
-        [field]: field === 'title' ? value.trimStart() : value,
-      };
-
-      return nextPlot;
-    });
-
-    if (nextPlot) {
-      void persistPlot(nextPlot);
+    if (!current) {
+      return;
     }
+
+    const nextPlot: PlotFile = {
+      ...current,
+      [field]: field === 'title' ? value.trimStart() : value,
+    };
+
+    cachePlot(nextPlot);
+    breadcrumbPlots.value = resolveCachedBreadcrumb(currentPlotId.value ?? plotId);
+    void persistPlot(nextPlot);
   }
 
   /** 创建根剧情块并保存到 `plots/*.json`。 */
@@ -379,10 +489,14 @@ export function usePlotLibrary() {
       return;
     }
 
-    plots.value = [...plots.value, savedPlot];
+    const entry = cachePlot(savedPlot);
+
+    appendEntryToCachedChildren(entry);
+    cacheChildren(savedPlot.id, []);
+    totalPlotCount.value += 1;
     currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
-    // saveMessage.value = '已创建一级剧情块。';
+    breadcrumbPlots.value = [entry];
   }
 
   /** 给指定剧情块创建直接子剧情并保存到 `plots/*.json`。 */
@@ -392,7 +506,9 @@ export function usePlotLibrary() {
       return;
     }
 
-    const childCount = plots.value.filter((plot) => plot.parentId === parentId).length;
+    const parentEntry = entryById.value.get(parentId);
+    const loadedChildren = childrenByParentId.value.get(parentId);
+    const childCount = loadedChildren?.length ?? parentEntry?.childCount ?? 0;
     const nextPlot = createEmptyPlot(createPlotId(), '未命名子剧情', parentId, childCount);
     const savedPlot = await persistPlot(nextPlot);
 
@@ -400,67 +516,90 @@ export function usePlotLibrary() {
       return;
     }
 
-    plots.value = [...plots.value, savedPlot];
+    const entry = cachePlot(savedPlot);
+
+    appendEntryToCachedChildren(entry);
+    cacheChildren(savedPlot.id, []);
+    totalPlotCount.value += 1;
+    updateEntryChildCount(parentId, childCount + 1);
     currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
-    // saveMessage.value = '已创建子剧情。';
+    breadcrumbPlots.value = resolveCachedBreadcrumb(savedPlot.id);
   }
 
   /** 给指定剧情块创建同级剧情并保存到 `plots/*.json`。 */
   async function createSiblingPlot(plotId: string): Promise<void> {
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const targetEntry = entryById.value.get(plotId);
 
-    if (!targetPlot) {
+    if (!targetEntry) {
       return;
     }
 
-    const siblingCount = plots.value.filter((plot) => plot.parentId === targetPlot.parentId).length;
-    const nextPlot = createEmptyPlot(createPlotId(), '未命名同级剧情', targetPlot.parentId, siblingCount);
+    const siblings = childrenByParentId.value.get(targetEntry.parentId) ?? [];
+    const siblingCount = siblings.length > 0
+      ? siblings.length
+      : Array.from(entryById.value.values()).filter(
+          (entry) => entry.parentId === targetEntry.parentId,
+        ).length;
+    const nextPlot = createEmptyPlot(
+      createPlotId(),
+      '未命名同级剧情',
+      targetEntry.parentId,
+      siblingCount,
+    );
     const savedPlot = await persistPlot(nextPlot);
 
     if (!savedPlot) {
       return;
     }
 
-    plots.value = [...plots.value, savedPlot];
+    const entry = cachePlot(savedPlot);
+
+    appendEntryToCachedChildren(entry);
+    cacheChildren(savedPlot.id, []);
+    totalPlotCount.value += 1;
     currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
-    // saveMessage.value = '已创建同级剧情。';
+    breadcrumbPlots.value = resolveCachedBreadcrumb(savedPlot.id);
   }
 
-  /** 删除指定剧情块及其全部后代，并删除对应 JSON 文件。 */
+  /** 删除指定剧情块及其全部后代，并让 main process 根据索引计算子树。 */
   async function deletePlot(plotId = currentPlot.value?.id ?? ''): Promise<void> {
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const targetEntry = entryById.value.get(plotId);
 
-    if (!targetPlot) {
+    if (!targetEntry) {
       return;
     }
-
-    const deletedIds = collectDescendantIds(plotId, plots.value);
-    deletedIds.add(plotId);
-    const parentId = targetPlot.parentId;
-    const previousPlots = plots.value;
-    const nextPlots = normalizeSiblingOrder(
-      plots.value.filter((plot) => !deletedIds.has(plot.id)),
-      parentId,
-    );
-    const changedRemainingPlots = nextPlots.filter((nextPlot) => {
-      const previousPlot = previousPlots.find((plot) => plot.id === nextPlot.id);
-      return previousPlot ? previousPlot.order !== nextPlot.order : false;
-    });
 
     isSaving.value = true;
 
     try {
       await Promise.all(plotSaveQueues.values());
-      await Promise.all(Array.from(deletedIds).map((deletedId) => deletePlotFile(deletedId)));
-      await Promise.all(changedRemainingPlots.map((plot) => savePlot(plot)));
-      plots.value = nextPlots;
-      currentPlotId.value =
-        (parentId && plots.value.some((plot) => plot.id === parentId) ? parentId : rootPlots.value[0]?.id) ??
-        null;
-      inspectedPlotId.value = currentPlotId.value;
-      saveMessage.value = `已删除 ${deletedIds.size} 个剧情块。`;
+      const result = await deletePlotFile(plotId);
+
+      removePlotsFromCache(result.deletedIds);
+      cacheChildren(result.parentId, result.siblings);
+      totalPlotCount.value = Math.max(0, totalPlotCount.value - result.deletedIds.length);
+
+      if (result.parentId) {
+        updateEntryChildCount(result.parentId, result.siblings.length);
+      }
+
+      if (result.parentId && entryById.value.has(result.parentId)) {
+        if (plotById.value.has(result.parentId)) {
+          currentPlotId.value = result.parentId;
+          inspectedPlotId.value = result.parentId;
+          breadcrumbPlots.value = resolveCachedBreadcrumb(result.parentId);
+        } else {
+          await openPlot(result.parentId);
+        }
+      } else {
+        currentPlotId.value = null;
+        inspectedPlotId.value = null;
+        breadcrumbPlots.value = [];
+      }
+
+      saveMessage.value = `已删除 ${result.deletedIds.length} 个剧情块。`;
       errorMessage.value = '';
     } catch (error) {
       errorMessage.value = formatError(error);
@@ -471,7 +610,7 @@ export function usePlotLibrary() {
 
   /** 创建右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
   async function createDescriptionBlock(plotId = inspectedPlot.value?.id ?? ''): Promise<void> {
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const targetPlot = plotById.value.get(plotId);
 
     if (!targetPlot) {
       return;
@@ -492,9 +631,7 @@ export function usePlotLibrary() {
       return;
     }
 
-    plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
     inspectedPlotId.value = savedPlot.id;
-    // saveMessage.value = '已新增说明卡片。';
   }
 
   /** 更新右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
@@ -508,31 +645,26 @@ export function usePlotLibrary() {
       return;
     }
 
-    let nextPlot: PlotFile | null = null;
+    const current = plotById.value.get(plotId);
 
-    plots.value = plots.value.map((plot) => {
-      if (plot.id !== plotId) {
-        return plot;
-      }
-
-      nextPlot = {
-        ...plot,
-        descriptionBlocks: plot.descriptionBlocks.map((description) =>
-          description.id === descriptionId
-            ? {
-                ...description,
-                ...patch,
-              }
-            : description,
-        ),
-      };
-
-      return nextPlot;
-    });
-
-    if (nextPlot) {
-      void persistPlot(nextPlot);
+    if (!current) {
+      return;
     }
+
+    const nextPlot: PlotFile = {
+      ...current,
+      descriptionBlocks: current.descriptionBlocks.map((description) =>
+        description.id === descriptionId
+          ? {
+              ...description,
+              ...patch,
+            }
+          : description,
+      ),
+    };
+
+    cachePlot(nextPlot);
+    void persistPlot(nextPlot);
   }
 
   /** 删除指定剧情块内的说明卡片，并保存对应 JSON 文件。 */
@@ -540,7 +672,7 @@ export function usePlotLibrary() {
     descriptionId: string,
     plotId = inspectedPlot.value?.id ?? '',
   ): Promise<void> {
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const targetPlot = plotById.value.get(plotId);
 
     if (!targetPlot) {
       return;
@@ -558,9 +690,7 @@ export function usePlotLibrary() {
       return;
     }
 
-    plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
     inspectedPlotId.value = savedPlot.id;
-    // saveMessage.value = '已删除说明卡片。';
   }
 
   /** 上下移动指定剧情块内的说明卡片，并保存对应 JSON 文件。 */
@@ -569,7 +699,7 @@ export function usePlotLibrary() {
     direction: 'up' | 'down',
     plotId = inspectedPlot.value?.id ?? '',
   ): Promise<void> {
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const targetPlot = plotById.value.get(plotId);
 
     if (!targetPlot) {
       return;
@@ -599,7 +729,6 @@ export function usePlotLibrary() {
       return;
     }
 
-    plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
     inspectedPlotId.value = savedPlot.id;
   }
 
@@ -652,19 +781,12 @@ export function usePlotLibrary() {
         order: index,
       })),
     };
-    const savedPlot = await persistPlot(nextPlot);
-
-    if (!savedPlot) {
-      return;
-    }
-
-    plots.value = plots.value.map((plot) => (plot.id === savedPlot.id ? savedPlot : plot));
-    // saveMessage.value = '已调整说明卡片顺序。';
+    await persistPlot(nextPlot);
   }
 
   /** 开始拖动剧情块。 */
   function startPlotDrag(plotId: string): void {
-    if (isSaving.value || isLoading.value) {
+    if (isSaving.value || isLoading.value || isLayerLoading.value) {
       return;
     }
 
@@ -680,10 +802,10 @@ export function usePlotLibrary() {
       return;
     }
 
-    const movedPlot = plots.value.find((plot) => plot.id === draggingPlotId.value);
-    const targetPlot = plots.value.find((plot) => plot.id === plotId);
+    const movedEntry = entryById.value.get(draggingPlotId.value);
+    const targetEntry = entryById.value.get(plotId);
 
-    if (!movedPlot || !targetPlot || movedPlot.parentId !== targetPlot.parentId) {
+    if (!movedEntry || !targetEntry || movedEntry.parentId !== targetEntry.parentId) {
       dragOverPlotId.value = null;
       return;
     }
@@ -711,33 +833,48 @@ export function usePlotLibrary() {
       return;
     }
 
-    const previousPlots = plots.value;
-    const nextPlots = moveSiblingPlotNear(previousPlots, movedPlotId, targetPlotId, placement);
+    const movedEntry = entryById.value.get(movedPlotId);
 
-    if (nextPlots === previousPlots) {
+    if (!movedEntry) {
       return;
     }
 
-    const changedPlots = nextPlots.filter((nextPlot) => {
-      const previousPlot = previousPlots.find((plot) => plot.id === nextPlot.id);
-      return previousPlot ? previousPlot.order !== nextPlot.order : false;
-    });
+    const parentId = movedEntry.parentId;
+    const previousSiblings = childrenByParentId.value.get(parentId) ?? [];
+    const nextSiblings = moveSiblingEntryNear(previousSiblings, movedPlotId, targetPlotId, placement);
 
-    plots.value = nextPlots;
-    currentPlotId.value = movedPlotId;
-    inspectedPlotId.value = movedPlotId;
+    if (nextSiblings === previousSiblings) {
+      return;
+    }
+
+    cacheChildren(parentId, nextSiblings);
     isSaving.value = true;
     saveMessage.value = '';
     errorMessage.value = '';
 
     try {
-      const savedPlots = await Promise.all(changedPlots.map((plot) => persistPlot(plot)));
+      await Promise.all(plotSaveQueues.values());
+      const savedSiblings = await savePlotOrder(parentId, nextSiblings.map((entry) => entry.id));
 
-      if (savedPlots.some((plot) => plot === null)) {
-        throw new Error(errorMessage.value || '剧情块排序保存失败');
+      cacheChildren(parentId, savedSiblings);
+      savedSiblings.forEach((entry) => {
+        const plot = plotById.value.get(entry.id);
+
+        if (plot && plot.order !== entry.order) {
+          cachePlot({
+            ...plot,
+            order: entry.order,
+          });
+        }
+      });
+
+      if (plotById.value.has(movedPlotId)) {
+        currentPlotId.value = movedPlotId;
+        inspectedPlotId.value = movedPlotId;
+        breadcrumbPlots.value = resolveCachedBreadcrumb(movedPlotId);
       }
     } catch (error) {
-      plots.value = previousPlots;
+      cacheChildren(parentId, previousSiblings);
       errorMessage.value = formatError(error);
     } finally {
       isSaving.value = plotSaveQueues.size > 0;
@@ -750,10 +887,10 @@ export function usePlotLibrary() {
     target: PlotContextTarget,
   ): Promise<void> {
     const targetPlotId = target.plotId ?? inspectedPlot.value?.id ?? currentPlot.value?.id ?? '';
-    const targetPlot = plots.value.find((plot) => plot.id === targetPlotId) ?? null;
+    const targetEntry = entryById.value.get(targetPlotId) ?? null;
 
     if (action === 'openPlot' && targetPlotId) {
-      openPlot(targetPlotId);
+      await openPlot(targetPlotId);
       return;
     }
 
@@ -773,8 +910,7 @@ export function usePlotLibrary() {
     }
 
     if (action === 'renamePlot' && targetPlotId) {
-      inspectPlot(targetPlotId);
-      // saveMessage.value = '可在右侧内容区直接修改剧情块名称。';
+      await inspectPlot(targetPlotId);
       return;
     }
 
@@ -789,13 +925,14 @@ export function usePlotLibrary() {
         return;
       }
 
+      await inspectPlot(targetPlotId);
       await createDescriptionBlock(targetPlotId);
       return;
     }
 
     if (action === 'editDescription') {
-      if (targetPlot) {
-        inspectPlot(targetPlot.id);
+      if (targetEntry) {
+        await inspectPlot(targetEntry.id);
       }
 
       saveMessage.value = '可在说明卡片内直接编辑名称和内容。';
@@ -825,6 +962,7 @@ export function usePlotLibrary() {
     breadcrumbPlots,
     childPlots,
     currentDescriptionBlocks,
+    totalPlotCount,
     saveMessage,
     errorMessage,
     fileErrors,

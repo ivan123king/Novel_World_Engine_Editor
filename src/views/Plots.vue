@@ -12,13 +12,13 @@ import type {
 import { usePlotLibrary } from '@/views/plot/usePlotLibrary';
 
 const {
-  plots,
   rootPlots,
   currentPlot,
   inspectedPlot,
   breadcrumbPlots,
   childPlots,
   currentDescriptionBlocks,
+  totalPlotCount,
   saveMessage,
   errorMessage,
   fileErrors,
@@ -35,7 +35,6 @@ const {
   hasErrorMessage,
   loadPlots,
   openPlot,
-  inspectPlot,
   updateCurrentPlotField,
   createRootPlot,
   createChildPlot,
@@ -181,7 +180,7 @@ onMounted(() => {
       </div>
 
       <n-space align="center" size="small">
-        <n-tag size="small" round>{{ plots.length }} 个剧情块</n-tag>
+        <n-tag size="small" round>{{ totalPlotCount }} 个剧情块</n-tag>
         <n-button size="small" :loading="isLoading" @click="loadPlots">
           刷新
         </n-button>
@@ -285,8 +284,7 @@ onMounted(() => {
               type="button"
               :disabled="isSaving"
               :draggable="!isSaving && !isLoading"
-              @click="inspectPlot(plot.id)"
-              @dblclick="openPlot(plot.id)"
+              @click="openPlot(plot.id)"
               @dragstart="startPlotDrag(plot.id)"
               @dragenter="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"
               @dragover.prevent="hoverPlotDropTarget(plot.id, resolvePlotDropPlacement($event))"

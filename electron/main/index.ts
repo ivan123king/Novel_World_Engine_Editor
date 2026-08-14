@@ -14,7 +14,10 @@ import {
 } from './items/item-service';
 import {
   deletePlotFile,
+  listPlotRoots,
   listPlots,
+  loadPlotLayer,
+  savePlotOrder,
   savePlot,
 } from './plots/plot-service';
 import {
@@ -268,8 +271,22 @@ ipcMain.handle('plots:list', (_event, baseDirPath?: string) =>
   listPlots(resolveCurrentProjectDirectory(baseDirPath)),
 );
 
+ipcMain.handle('plots:list-roots', (_event, baseDirPath?: string) =>
+  listPlotRoots(resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('plots:load-layer', (_event, plotId: string, baseDirPath?: string) =>
+  loadPlotLayer(plotId, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
 ipcMain.handle('plots:save', (_event, plot, baseDirPath?: string) =>
   savePlot(plot, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle(
+  'plots:save-order',
+  (_event, parentId: string | null, orderedPlotIds: string[], baseDirPath?: string) =>
+    savePlotOrder(parentId, orderedPlotIds, resolveCurrentProjectDirectory(baseDirPath)),
 );
 
 ipcMain.handle('plots:delete', (_event, plotId: string, baseDirPath?: string) =>
