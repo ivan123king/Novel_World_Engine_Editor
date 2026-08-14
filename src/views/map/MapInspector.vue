@@ -81,19 +81,6 @@ const emit = defineEmits<{
           </dl>
           <p v-else>暂无自定义信息。</p>
         </section>
-
-        <section v-if="childMaps.length > 0">
-          <h3>当前地图的子地图</h3>
-          <button
-            v-for="map in childMaps"
-            :key="map.id"
-            class="sub-map-button"
-            type="button"
-            @click="emit('openMap', map.id)"
-          >
-            {{ map.name }}
-          </button>
-        </section>
       </div>
 
       <div v-else class="field-stack">
