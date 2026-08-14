@@ -175,14 +175,14 @@ function removeCustomField(index: number): void {
         <div v-for="(field, index) in values.customFields" :key="field.id" class="custom-field-row">
           <n-input
             :value="field.key"
-            placeholder="key，例如：人物"
+            placeholder="请填写自定义字段名"
             clearable
             @update:value="updateCustomField(index, { key: $event })"
           />
           <span class="custom-field-equals">=</span>
           <n-input
             :value="field.value"
-            placeholder="value，可填写普通文本或 JSON"
+            placeholder="请填写自定义内容"
             clearable
             @update:value="updateCustomField(index, { value: $event })"
           />

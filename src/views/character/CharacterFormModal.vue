@@ -186,7 +186,7 @@ watch(
       </div>
 
       <div v-if="hasDuplicateKeys" class="duplicate-warning">
-        存在重复 key：{{ duplicateFieldKeys.join('、') }}。请修改后再保存。
+        存在重复名称：{{ duplicateFieldKeys.join('、') }}。请修改后再保存。
       </div>
 
       <div class="custom-field-list">

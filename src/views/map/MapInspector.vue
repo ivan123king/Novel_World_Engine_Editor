@@ -113,7 +113,7 @@ const emit = defineEmits<{
             <button type="button" @click="emit('removeCustomField', index)">删除</button>
           </div>
           <div v-if="duplicateFieldKeys.length" class="edit-note">
-            自定义字段 key 重复：{{ duplicateFieldKeys.join('、') }}
+            自定义字段名重复：{{ duplicateFieldKeys.join('、') }}
           </div>
         </section>
       </div>
