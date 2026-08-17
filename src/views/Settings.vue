@@ -49,12 +49,12 @@ const selectedContentIsEmpty = computed(() => isSettingHtmlEmpty(selectedContent
 
 /**
  * 清理设定 HTML 展示内容。
- * 当前内容由 Tiptap 生成，本地 JSON 仍可能被手动编辑，因此渲染前只保留基础文字标签。
+ * 当前内容由 Tiptap 生成，本地 JSON 仍可能被手动编辑，因此渲染前只保留文字和基础表格标签。
  */
 const safeSelectedContentHtml = computed(() => sanitizeSettingHtml(selectedContentHtml.value));
 
 /**
- * 过滤设定 HTML 中的非基础文字标签和属性。
+ * 过滤设定 HTML 中的非基础文字与表格标签和属性。
  * @param html 原始 HTML
  */
 function sanitizeSettingHtml(html: string): string {
@@ -73,6 +73,12 @@ function sanitizeSettingHtml(html: string): string {
     'BLOCKQUOTE',
     'H2',
     'H3',
+    'TABLE',
+    'TBODY',
+    'THEAD',
+    'TR',
+    'TD',
+    'TH',
   ]);
 
   template.innerHTML = html;
@@ -181,10 +187,6 @@ onMounted(() => {
           </div>
 
           <div class="setting-content-panel">
-            <div class="section-heading">
-              <n-text strong>设定内容</n-text>
-            </div>
-
             <div
               v-if="!selectedContentIsEmpty"
               class="setting-content-text"
@@ -443,7 +445,8 @@ onMounted(() => {
 .setting-content-text :deep(ol),
 .setting-content-text :deep(blockquote),
 .setting-content-text :deep(h2),
-.setting-content-text :deep(h3) {
+.setting-content-text :deep(h3),
+.setting-content-text :deep(table) {
   margin: 0 0 10px;
 }
 
@@ -466,6 +469,26 @@ onMounted(() => {
   padding-left: 12px;
   color: #52616f;
   border-left: 3px solid #9db7d3;
+}
+
+.setting-content-text :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.setting-content-text :deep(th),
+.setting-content-text :deep(td) {
+  min-width: 72px;
+  padding: 8px 10px;
+  vertical-align: top;
+  border: 1px solid #cbd5e1;
+}
+
+.setting-content-text :deep(th) {
+  color: #17212b;
+  background: #eef6ff;
+  font-weight: 700;
 }
 
 /** 表单错误提示。 */

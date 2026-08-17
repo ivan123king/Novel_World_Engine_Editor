@@ -44,7 +44,7 @@ Windows zip 绿色版和 `.exe` 安装包发布步骤见 `docs/dev-guides/packag
 - `src/views/ProjectHome.vue`：项目首页，只展示当前小说目录 `novel.json` 中的小说名和简介，并支持双击编辑保存。
 - `src/views/AiAssistant.vue`：AI小助手预留聊天室页面，当前只展示假消息，不接入真实 AI 或 JSON 写入。
 - `src/views/Settings.vue`：设定模块页面，使用 Electron 本地 JSON 数据展示设定列表、设定 Inspector，以及新建/编辑弹框。
-- `src/views/settings/`：设定模块的前端状态逻辑，封装设定列表加载和表单提交流程。
+- `src/views/settings/`：设定模块的前端状态逻辑和富文本编辑器，封装设定列表加载、表单提交、基础表格编辑和中文 Tab 首行缩进流程。
 - `src/views/character/`：人物模块页面组件和本地状态逻辑。
 - `src/views/plot/`：剧情库模块的前端状态逻辑，使用剧情索引和按层懒加载缓存维护剧情树与 Inspector 交互。
 - `src/views/timeline/`：时间线模块拆分组件和工作台状态逻辑，`Timeline.vue` 只作为页面组装入口。

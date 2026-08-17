@@ -4,9 +4,13 @@
  * 基于 Tiptap 提供最基础的文字编辑能力，不开放图片、附件等会扩大数据边界的内容类型。
  */
 import { watch } from 'vue';
+import { Extension, type Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
+import { TableKit } from '@tiptap/extension-table';
 import { EMPTY_SETTING_HTML } from '@/views/settings/settingContent';
+
+const FIRST_LINE_INDENT = '\u3000\u3000';
 
 const props = defineProps<{
   /** 富文本 HTML 内容。 */
@@ -20,7 +24,85 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-/** Tiptap 编辑器实例，只启用基础文字编辑扩展。 */
+/**
+ * 删除当前文本块开头的中文首行缩进。
+ * @param currentEditor 当前 Tiptap 编辑器实例
+ */
+function removeCurrentTextBlockIndent(currentEditor: Editor): boolean {
+  const { state, view } = currentEditor;
+  const { $from } = state.selection;
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+
+    if (!node.isTextblock) {
+      continue;
+    }
+
+    const leadingText = node.textBetween(0, FIRST_LINE_INDENT.length);
+
+    if (!leadingText.startsWith(FIRST_LINE_INDENT)) {
+      return true;
+    }
+
+    const contentStartPosition = $from.before(depth) + 1;
+    view.dispatch(
+      state.tr
+        .delete(contentStartPosition, contentStartPosition + FIRST_LINE_INDENT.length)
+        .scrollIntoView(),
+    );
+
+    return true;
+  }
+
+  return true;
+}
+
+/** 中文写作快捷键：普通正文按 Tab 插入首行缩进，列表和表格保留编辑器语义。 */
+const ChineseWritingKeymap = Extension.create({
+  name: 'chineseWritingKeymap',
+
+  addKeyboardShortcuts() {
+    return {
+      Tab: ({ editor: currentEditor }) => {
+        if (currentEditor.isActive('table')) {
+          if (currentEditor.commands.goToNextCell()) {
+            return true;
+          }
+
+          if (!currentEditor.can().addRowAfter()) {
+            return true;
+          }
+
+          return currentEditor.chain().addRowAfter().goToNextCell().run();
+        }
+
+        if (currentEditor.isActive('listItem')) {
+          currentEditor.commands.sinkListItem('listItem');
+          return true;
+        }
+
+        currentEditor.chain().focus().insertContent(FIRST_LINE_INDENT).run();
+        return true;
+      },
+      'Shift-Tab': ({ editor: currentEditor }) => {
+        if (currentEditor.isActive('table')) {
+          currentEditor.commands.goToPreviousCell();
+          return true;
+        }
+
+        if (currentEditor.isActive('listItem')) {
+          currentEditor.commands.liftListItem('listItem');
+          return true;
+        }
+
+        return removeCurrentTextBlockIndent(currentEditor);
+      },
+    };
+  },
+});
+
+/** Tiptap 编辑器实例，启用设定模块需要的文字排版和基础表格能力。 */
 const editor = useEditor({
   content: props.modelValue || EMPTY_SETTING_HTML,
   editable: !props.disabled,
@@ -34,6 +116,15 @@ const editor = useEditor({
       codeBlock: false,
       horizontalRule: false,
     }),
+    TableKit.configure({
+      table: {
+        resizable: true,
+      },
+      tableCell: {},
+      tableHeader: {},
+      tableRow: {},
+    }),
+    ChineseWritingKeymap,
   ],
   onUpdate: ({ editor: currentEditor }) => {
     emit('update:modelValue', currentEditor.getHTML());
@@ -165,6 +256,61 @@ watch(
       <button
         class="toolbar-button"
         type="button"
+        title="插入三行三列表格"
+        :disabled="disabled"
+        @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+      >
+        表格
+      </button>
+      <button
+        class="toolbar-button"
+        type="button"
+        title="在当前行后插入一行"
+        :disabled="disabled || !editor.isActive('table')"
+        @click="editor.chain().focus().addRowAfter().run()"
+      >
+        +行
+      </button>
+      <button
+        class="toolbar-button"
+        type="button"
+        title="删除当前行"
+        :disabled="disabled || !editor.isActive('table')"
+        @click="editor.chain().focus().deleteRow().run()"
+      >
+        -行
+      </button>
+      <button
+        class="toolbar-button"
+        type="button"
+        title="在当前列后插入一列"
+        :disabled="disabled || !editor.isActive('table')"
+        @click="editor.chain().focus().addColumnAfter().run()"
+      >
+        +列
+      </button>
+      <button
+        class="toolbar-button"
+        type="button"
+        title="删除当前列"
+        :disabled="disabled || !editor.isActive('table')"
+        @click="editor.chain().focus().deleteColumn().run()"
+      >
+        -列
+      </button>
+      <button
+        class="toolbar-button"
+        type="button"
+        title="删除当前表格"
+        :disabled="disabled || !editor.isActive('table')"
+        @click="editor.chain().focus().deleteTable().run()"
+      >
+        删表
+      </button>
+      <span class="toolbar-divider" aria-hidden="true" />
+      <button
+        class="toolbar-button"
+        type="button"
         title="撤销"
         :disabled="disabled || !editor.can().undo()"
         @click="editor.chain().focus().undo().run()"
@@ -283,5 +429,50 @@ watch(
   padding-left: 12px;
   color: #52616f;
   border-left: 3px solid #9db7d3;
+}
+
+.setting-editor-content :deep(.tiptap table) {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.setting-editor-content :deep(.tiptap th),
+.setting-editor-content :deep(.tiptap td) {
+  position: relative;
+  min-width: 72px;
+  padding: 8px 10px;
+  vertical-align: top;
+  border: 1px solid #cbd5e1;
+}
+
+.setting-editor-content :deep(.tiptap th) {
+  color: #17212b;
+  background: #eef6ff;
+  font-weight: 700;
+}
+
+.setting-editor-content :deep(.tiptap .selectedCell::after) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  content: '';
+  background: rgb(122 167 217 / 18%);
+}
+
+.setting-editor-content :deep(.tiptap .column-resize-handle) {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  pointer-events: none;
+  background: #7aa7d9;
+}
+
+.setting-editor-content :deep(.tiptap.resize-cursor) {
+  cursor: col-resize;
 }
 </style>
