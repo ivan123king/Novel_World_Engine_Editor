@@ -20,6 +20,7 @@ import {
   type TimelineIndexFile,
   type TimelineTimeBlock,
 } from '@/types';
+import { getSimpleRichTextEditorHtml } from '@/components/common/simpleRichTextContent';
 
 /** 时间块拖放插入位置。 */
 export type TimelineTimeBlockDropPlacement = 'before' | 'after';
@@ -152,7 +153,7 @@ function createEventFormValues(event?: TimelineEvent, fallbackTimeBlockId = ''):
     timeBlockId: event?.timeBlockId ?? fallbackTimeBlockId,
     specificTime: event?.specificTime ?? '',
     title: event?.title ?? '新事件',
-    content: event?.content ?? '',
+    content: event ? getSimpleRichTextEditorHtml(event.content) : '',
     customFields: customFieldRows.length > 0 ? customFieldRows : [createTimelineCustomFieldRow()],
   };
 }

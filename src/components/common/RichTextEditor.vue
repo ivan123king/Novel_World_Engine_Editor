@@ -349,8 +349,8 @@ watch(
         </button>
       </template>
 
-      <span class="rich-text-editor__divider" aria-hidden="true" />
-      <button
+      <!-- <span class="rich-text-editor__divider" aria-hidden="true" /> -->
+      <!-- <button
         class="rich-text-editor__button"
         type="button"
         title="撤销"
@@ -367,7 +367,7 @@ watch(
         @click="editor.chain().focus().redo().run()"
       >
         重做
-      </button>
+      </button> -->
     </div>
 
     <EditorContent class="rich-text-editor__content" :editor="editor" />

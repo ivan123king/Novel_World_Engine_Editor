@@ -4,6 +4,11 @@
  * 事件卡片只显示标题和时间，完整内容和自定义字段在这里查看和编辑。
  */
 import AppModal from '@/components/common/AppModal.vue';
+import RichTextEditor from '@/components/common/RichTextEditor.vue';
+import {
+  isSimpleRichTextEmpty,
+  sanitizeSimpleRichTextHtml,
+} from '@/components/common/simpleRichTextContent';
 import { computed } from 'vue';
 import type { TimelineTimeBlock } from '@/types';
 import type {
@@ -106,7 +111,12 @@ function removeCustomField(index: number): void {
           {{ values.title || '未命名事件' }}
         </n-descriptions-item>
         <n-descriptions-item label="事件内容" label-style="width: 88px">
-          <p class="event-content">{{ values.content || '未填写' }}</p>
+          <div
+            v-if="!isSimpleRichTextEmpty(values.content)"
+            class="event-content"
+            v-html="sanitizeSimpleRichTextHtml(values.content)"
+          />
+          <span v-else>未填写</span>
         </n-descriptions-item>
       </n-descriptions>
 
@@ -155,12 +165,10 @@ function removeCustomField(index: number): void {
       </n-form-item>
 
       <n-form-item label="事件内容">
-        <n-input
-          :value="values.content"
-          type="textarea"
-          placeholder="简述这个时间内发生的事件内容"
-          :autosize="{ minRows: 3}"
-          @update:value="patchValues({ content: $event })"
+        <RichTextEditor
+          :model-value="values.content"
+          :disabled="submitting"
+          @update:model-value="patchValues({ content: $event })"
         />
       </n-form-item>
 
@@ -225,9 +233,33 @@ function removeCustomField(index: number): void {
 
 /** 长事件内容展示。 */
 .event-content {
+  margin: 0;
   line-height: 1.7;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.event-content :deep(p),
+.event-content :deep(h2),
+.event-content :deep(h3) {
+  margin: 0 0 10px;
+}
+
+.event-content :deep(p:last-child),
+.event-content :deep(h2:last-child),
+.event-content :deep(h3:last-child) {
+  margin-bottom: 0;
+}
+
+.event-content :deep(h2) {
+  color: #1f2c38;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.event-content :deep(h3) {
+  color: #1f2c38;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 /** 自定义字段只读区域。 */
