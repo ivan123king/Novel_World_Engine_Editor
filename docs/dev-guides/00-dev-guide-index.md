@@ -27,6 +27,7 @@
 - `project-home-page.md`：项目首页页面设计。修改首页小说名、简介展示、双击编辑和 `novel.json` 首页字段保存前阅读。
 - `list-order.md`：列表排序元数据设计。为人物、物品或后续资源列表新增拖动排序、保存展示顺序或恢复排序文件时阅读。
 - `main-workbench-layout.md`：主工作台整体页面结构。修改顶部项目栏、左侧模块导航、右侧页面容器、路由入口或 `mock_data/` 规则时阅读。
+- `settings/setting-module-design.md`：设定模块设计。新增或修改世界背景、规则设定、境界设定等设定列表、设定详情、新建编辑弹框或设定 JSON 格式前阅读。
 - `character/character-list-page.md`：人物列表页设计。修改人物卡片列表、新建弹框、详情弹框、编辑入口或人物 mock 数据展示时阅读。
 - `character/character-custom-fields.md`：人物自定义属性设计。修改人物新建/编辑弹框中的动态 key/value 属性、`customFields` 转换或详情展示时阅读。
 - `character/character-data-flow.md`：人物 JSON 文件读写流程。修改人物持久化、IPC、preload 或 renderer API 时阅读。

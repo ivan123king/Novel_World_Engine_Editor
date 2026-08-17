@@ -12,6 +12,7 @@ import type {
   PlotFile,
   PlotIndexEntry,
   RelationGraphFile,
+  SettingFile,
   SystemConfigEditorFile,
   TimelineFile,
   TimelineIndexFile,
@@ -34,6 +35,16 @@ declare global {
     baseDir: string;
     /** 已成功读取的物品列表。 */
     items: ItemFile[];
+    /** 单个文件读取失败时的非致命错误。 */
+    errors: string[];
+  }
+
+  /** 设定列表读取结果，和 preload 暴露的数据结构保持一致。 */
+  interface SettingListResult {
+    /** 当前使用的数据基础目录。 */
+    baseDir: string;
+    /** 已成功读取的设定列表。 */
+    settings: SettingFile[];
     /** 单个文件读取失败时的非致命错误。 */
     errors: string[];
   }
@@ -156,6 +167,9 @@ declare global {
       saveItem: (item: ItemFile, baseDirPath?: string) => Promise<ItemFile>;
       deleteItem: (itemId: string, baseDirPath?: string) => Promise<void>;
       saveItemOrder: (itemIds: string[], baseDirPath?: string) => Promise<void>;
+      listSettings: (baseDirPath?: string) => Promise<SettingListResult>;
+      saveSetting: (setting: SettingFile, baseDirPath?: string) => Promise<SettingFile>;
+      deleteSetting: (settingId: string, baseDirPath?: string) => Promise<void>;
       listPlots: (baseDirPath?: string) => Promise<PlotListResult>;
       listPlotRoots: (baseDirPath?: string) => Promise<PlotRootListResult>;
       loadPlotLayer: (plotId: string, baseDirPath?: string) => Promise<PlotLayerResult>;

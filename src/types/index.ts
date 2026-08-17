@@ -23,6 +23,12 @@ export {
   type ItemFile,
 } from './item';
 export {
+  SETTING_SCHEMA_VERSION,
+  createEmptySetting,
+  isSettingFile,
+  type SettingFile,
+} from './setting';
+export {
   LIST_ORDER_SCHEMA_VERSION,
   createListOrderFile,
   isListOrderFile,

@@ -24,6 +24,7 @@ const NOVEL_FILE_NAME = 'novel.json';
 /** 新建项目时可预创建的小说数据目录。 */
 const PROJECT_DATA_DIRECTORIES = [
   'list-orders',
+  'settings',
   'characters',
   'items',
   'locations',

@@ -27,6 +27,7 @@ Windows zip 绿色版和 `.exe` 安装包发布步骤见 `docs/dev-guides/packag
 - `electron/main/system/`：应用系统配置服务，管理 Electron userData 目录中的 `system/app-settings.json` 等工具自身设置，并提供菜单触发的系统配置 JSON 弹框编辑能力。
 - `electron/main/characters/`：人物 JSON 文件读写服务，管理当前小说项目目录下的 `characters/*.json`。
 - `electron/main/items/`：物品 JSON 文件读写服务，管理当前小说项目目录下的 `items/*.json`。
+- `electron/main/settings/`：设定 JSON 文件读写服务，管理当前小说项目目录下的 `settings/*.json`。
 - `electron/main/plots/`：剧情库 JSON 文件读写服务，管理当前小说项目目录下的 `plots/*.json` 详情文件和 `plots/index.json` 轻量索引。
 - `electron/main/relations/`：关系图谱 JSON 文件读写服务，管理当前小说项目目录下的 `relation-graphs/*.json` 和关系图谱排序元数据。
 - `electron/main/timeline/`：时间线 JSON 文件读写服务，管理当前小说项目目录下的 `timeline/*.json` 和时间块排序元数据。
@@ -42,11 +43,13 @@ Windows zip 绿色版和 `.exe` 安装包发布步骤见 `docs/dev-guides/packag
 - `src/views/`：主工作台右侧承载的模块页面。
 - `src/views/ProjectHome.vue`：项目首页，只展示当前小说目录 `novel.json` 中的小说名和简介，并支持双击编辑保存。
 - `src/views/AiAssistant.vue`：AI小助手预留聊天室页面，当前只展示假消息，不接入真实 AI 或 JSON 写入。
+- `src/views/Settings.vue`：设定模块页面，使用 Electron 本地 JSON 数据展示设定列表、设定 Inspector，以及新建/编辑弹框。
+- `src/views/settings/`：设定模块的前端状态逻辑，封装设定列表加载和表单提交流程。
 - `src/views/character/`：人物模块页面组件和本地状态逻辑。
 - `src/views/plot/`：剧情库模块的前端状态逻辑，使用剧情索引和按层懒加载缓存维护剧情树与 Inspector 交互。
 - `src/views/timeline/`：时间线模块拆分组件和工作台状态逻辑，`Timeline.vue` 只作为页面组装入口。
 - `src/stores/`：renderer 侧轻量状态 store，当前保存已打开的小说项目信息。
-- `src/types/`：共享 TypeScript 数据结构；当前包含小说项目、人物、物品、地点、地图、关系图谱、剧情节点等 JSON 类型。
+- `src/types/`：共享 TypeScript 数据结构；当前包含小说项目、设定、人物、物品、地点、地图、关系图谱、剧情节点等 JSON 类型。
 - `mock_data/`：开发期 mock 数据，真实 JSON 项目读写接入前用于页面展示。
 - Electron userData 目录中的 `system/`：应用系统文件目录，只保存上一次打开的项目目录等工具配置，不保存小说领域数据；系统配置弹框会展示实际文件路径。
 - `docs/ai-guides/`：给后续 AI 使用的产品方向和架构说明。

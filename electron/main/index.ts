@@ -13,6 +13,11 @@ import {
   saveItem,
 } from './items/item-service';
 import {
+  deleteSettingFile,
+  listSettings,
+  saveSetting,
+} from './settings/setting-service';
+import {
   deletePlotFile,
   listPlotRoots,
   listPlots,
@@ -265,6 +270,18 @@ ipcMain.handle('items:delete', (_event, itemId: string, baseDirPath?: string) =>
 
 ipcMain.handle('items:save-order', (_event, itemIds: string[], baseDirPath?: string) =>
   saveItemOrder(itemIds, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('settings:list', (_event, baseDirPath?: string) =>
+  listSettings(resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('settings:save', (_event, setting, baseDirPath?: string) =>
+  saveSetting(setting, resolveCurrentProjectDirectory(baseDirPath)),
+);
+
+ipcMain.handle('settings:delete', (_event, settingId: string, baseDirPath?: string) =>
+  deleteSettingFile(settingId, resolveCurrentProjectDirectory(baseDirPath)),
 );
 
 ipcMain.handle('plots:list', (_event, baseDirPath?: string) =>

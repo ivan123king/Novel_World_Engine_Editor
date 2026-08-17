@@ -38,6 +38,7 @@ const { currentProjectTitle, currentProjectPath } = projectStore;
  */
 const navigationItems: WorkbenchNavigationItem[] = [
   { label: '项目首页', key: '/' },
+  { label: '设定', key: '/settings' },
   { label: '人物', key: '/characters' },
   { label: '物品', key: '/items' },
   { label: '地图', key: '/locations' },

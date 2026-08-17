@@ -11,6 +11,7 @@ import type {
   PlotFile,
   PlotIndexEntry,
   RelationGraphFile,
+  SettingFile,
   SystemConfigEditorFile,
   TimelineFile,
   TimelineIndexFile,
@@ -108,6 +109,13 @@ contextBridge.exposeInMainWorld('novelEngine', {
     ipcRenderer.invoke('items:delete', itemId, baseDirPath),
   saveItemOrder: (itemIds: string[], baseDirPath?: string) =>
     ipcRenderer.invoke('items:save-order', itemIds, baseDirPath),
+
+  //设定模块
+  listSettings: (baseDirPath?: string) => ipcRenderer.invoke('settings:list', baseDirPath),
+  saveSetting: (setting: SettingFile, baseDirPath?: string) =>
+    ipcRenderer.invoke('settings:save', setting, baseDirPath),
+  deleteSetting: (settingId: string, baseDirPath?: string) =>
+    ipcRenderer.invoke('settings:delete', settingId, baseDirPath),
 
   //剧情库模块
   listPlots: (baseDirPath?: string) => ipcRenderer.invoke('plots:list', baseDirPath),

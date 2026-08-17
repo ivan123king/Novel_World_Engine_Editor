@@ -6,6 +6,7 @@ import Locations from '@/views/Locations.vue';
 import Plots from '@/views/Plots.vue';
 import ProjectHome from '@/views/ProjectHome.vue';
 import Relations from '@/views/Relations.vue';
+import Settings from '@/views/Settings.vue';
 import Timeline from '@/views/Timeline.vue';
 
 // 主工作台路由表只负责模块入口，不在这里定义模块内部页面细节。
@@ -15,6 +16,12 @@ const routes: RouteRecordRaw[] = [
     name: 'project-home',
     component: ProjectHome,
     meta: { title: '项目首页' },
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: Settings,
+    meta: { title: '设定' },
   },
   {
     path: '/characters',
