@@ -40,6 +40,14 @@ export interface PlotContextTarget {
   descriptionId?: string;
 }
 
+/** 说明卡片弹框提交的数据。 */
+interface PlotDescriptionDraft {
+  /** 说明卡片名称。 */
+  title: string;
+  /** 说明卡片正文内容。 */
+  content: string;
+}
+
 /** 剧情块拖放插入位置。 */
 export type PlotDropPlacement = 'before' | 'after';
 
@@ -703,46 +711,60 @@ export function usePlotLibrary() {
   }
 
   /** 创建右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
-  async function createDescriptionBlock(plotId = inspectedPlot.value?.id ?? ''): Promise<void> {
+  async function createDescriptionBlock(
+    plotId = inspectedPlot.value?.id ?? '',
+    draft: Partial<PlotDescriptionDraft> = {},
+  ): Promise<boolean> {
     const targetPlot = plotById.value.get(plotId);
 
     if (!targetPlot) {
-      return;
+      return false;
     }
 
     const nextDescription = createEmptyPlotDescriptionBlock(
       createDescriptionId(),
-      '未命名说明',
-      targetPlot.descriptionBlocks.length,
+      draft.title?.trim() || '未命名说明',
+      0,
     );
+    const orderedDescriptions = normalizeDescriptionOrder(targetPlot.descriptionBlocks);
     const nextPlot: PlotFile = {
       ...targetPlot,
-      descriptionBlocks: [...targetPlot.descriptionBlocks, nextDescription],
+      descriptionBlocks: [
+        {
+          ...nextDescription,
+          content: draft.content ?? '',
+        },
+        ...orderedDescriptions,
+      ].map((description, index) => ({
+        ...description,
+        order: index,
+      })),
     };
     const savedPlot = await persistPlot(nextPlot);
 
     if (!savedPlot) {
-      return;
+      return false;
     }
 
     inspectedPlotId.value = savedPlot.id;
+    return true;
   }
 
   /** 更新右侧 Inspector 展示剧情块内的说明卡片，并保存对应 JSON 文件。 */
-  function updateDescriptionBlock(
+  async function updateDescriptionBlock(
     descriptionId: string,
     patch: Partial<Pick<PlotDescriptionBlock, 'title' | 'content'>>,
-  ): void {
-    const plotId = inspectedPlot.value?.id;
+    plotId = inspectedPlot.value?.id ?? '',
+  ): Promise<boolean> {
 
     if (!plotId) {
-      return;
+      return false;
     }
 
     const current = plotById.value.get(plotId);
 
     if (!current) {
-      return;
+      return false;
     }
 
     const nextPlot: PlotFile = {
@@ -757,8 +779,14 @@ export function usePlotLibrary() {
       ),
     };
 
-    cachePlot(nextPlot);
-    void persistPlot(nextPlot);
+    const savedPlot = await persistPlot(nextPlot);
+
+    if (!savedPlot) {
+      return false;
+    }
+
+    inspectedPlotId.value = savedPlot.id;
+    return true;
   }
 
   /** 删除指定剧情块内的说明卡片，并保存对应 JSON 文件。 */
@@ -1029,7 +1057,6 @@ export function usePlotLibrary() {
         await inspectPlot(targetEntry.id);
       }
 
-      saveMessage.value = '可在说明卡片内直接编辑名称和内容。';
       return;
     }
 

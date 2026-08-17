@@ -45,7 +45,6 @@ const {
   deletePlot,
   createDescriptionBlock,
   updateDescriptionBlock,
-  deleteDescriptionBlock,
   startPlotDrag,
   hoverPlotDropTarget,
   resetPlotDrag,
@@ -81,8 +80,35 @@ const renameDialog = reactive<{
   title: '',
 });
 
+/** 说明卡片新建和编辑弹框状态。 */
+const descriptionDialog = reactive<{
+  open: boolean;
+  mode: 'create' | 'edit';
+  plotId: string;
+  descriptionId: string;
+  title: string;
+  content: string;
+}>({
+  open: false,
+  mode: 'create',
+  plotId: '',
+  descriptionId: '',
+  title: '',
+  content: '',
+});
+
 /** 重命名表单是否可以提交。 */
 const canSubmitRename = computed(() => renameDialog.title.trim().length > 0 && !isSaving.value);
+
+/** 说明卡片弹框标题。 */
+const descriptionDialogTitle = computed(() =>
+  descriptionDialog.mode === 'create' ? '新建说明卡片' : '编辑说明卡片',
+);
+
+/** 说明卡片表单是否可以提交。 */
+const canSubmitDescription = computed(
+  () => descriptionDialog.title.trim().length > 0 && !isSaving.value,
+);
 
 /** 根据右键命中区域生成对应菜单项。 */
 const contextMenuOptions = computed(() => {
@@ -160,6 +186,18 @@ function handleContextMenuSelect(key: string | number): void {
     return;
   }
 
+  if (action === 'createDescription') {
+    openCreateDescriptionDialog(contextMenu.target);
+    contextMenu.show = false;
+    return;
+  }
+
+  if (action === 'editDescription') {
+    openEditDescriptionDialog(contextMenu.target);
+    contextMenu.show = false;
+    return;
+  }
+
   void handleContextMenuAction(action, contextMenu.target);
   contextMenu.show = false;
 }
@@ -199,6 +237,87 @@ async function submitRename(): Promise<void> {
 
   if (isRenamed) {
     closeRenameDialog();
+  }
+}
+
+/**
+ * 打开说明卡片新建弹框。
+ * @param target 右键命中的剧情库目标，缺省时使用右侧 Inspector 当前剧情块
+ */
+function openCreateDescriptionDialog(target?: PlotContextTarget | null): void {
+  const plotId = target?.plotId ?? inspectedPlot.value?.id ?? currentPlot.value?.id ?? '';
+
+  if (!plotId) {
+    errorMessage.value = '请先选择一个剧情块，再新建说明卡片。';
+    return;
+  }
+
+  descriptionDialog.open = true;
+  descriptionDialog.mode = 'create';
+  descriptionDialog.plotId = plotId;
+  descriptionDialog.descriptionId = '';
+  descriptionDialog.title = '';
+  descriptionDialog.content = '';
+}
+
+/**
+ * 打开说明卡片编辑弹框。
+ * @param target 右键命中的说明卡片
+ */
+function openEditDescriptionDialog(target: PlotContextTarget): void {
+  const plotId = target.plotId ?? inspectedPlot.value?.id ?? '';
+
+  if (!plotId || !target.descriptionId) {
+    return;
+  }
+
+  const description = currentDescriptionBlocks.value.find(
+    (item) => item.id === target.descriptionId,
+  );
+
+  if (!description) {
+    errorMessage.value = '未找到要编辑的说明卡片。';
+    return;
+  }
+
+  descriptionDialog.open = true;
+  descriptionDialog.mode = 'edit';
+  descriptionDialog.plotId = plotId;
+  descriptionDialog.descriptionId = description.id;
+  descriptionDialog.title = description.title;
+  descriptionDialog.content = description.content;
+}
+
+/** 关闭说明卡片弹框。 */
+function closeDescriptionDialog(): void {
+  if (isSaving.value) {
+    return;
+  }
+
+  descriptionDialog.open = false;
+  descriptionDialog.plotId = '';
+  descriptionDialog.descriptionId = '';
+  descriptionDialog.title = '';
+  descriptionDialog.content = '';
+}
+
+/** 提交说明卡片新建或编辑。 */
+async function submitDescriptionDialog(): Promise<void> {
+  if (!descriptionDialog.plotId || !canSubmitDescription.value) {
+    return;
+  }
+
+  const payload = {
+    title: descriptionDialog.title.trim(),
+    content: descriptionDialog.content,
+  };
+  const isSaved =
+    descriptionDialog.mode === 'create'
+      ? await createDescriptionBlock(descriptionDialog.plotId, payload)
+      : await updateDescriptionBlock(descriptionDialog.descriptionId, payload, descriptionDialog.plotId);
+
+  if (isSaved) {
+    closeDescriptionDialog();
   }
 }
 
@@ -254,6 +373,47 @@ onMounted(() => {
         <div class="modal-footer">
           <n-button :disabled="isSaving" @click="closeRenameDialog">取消</n-button>
           <n-button type="primary" :loading="isSaving" :disabled="!canSubmitRename" @click="submitRename">
+            保存
+          </n-button>
+        </div>
+      </template>
+    </AppModal>
+
+    <!-- 说明卡片表单弹框：新建和编辑都在弹框内完成，避免右侧列表常驻编辑态。 -->
+    <AppModal
+      :open="descriptionDialog.open"
+      :title="descriptionDialogTitle"
+      :width="560"
+      @close="closeDescriptionDialog"
+    >
+      <n-form label-placement="top" label-align="text">
+        <n-form-item label="说明名称" required>
+          <n-input
+            v-model:value="descriptionDialog.title"
+            placeholder="例如：伏笔说明、冲突设计、待补充段落"
+            clearable
+            @keyup.enter="submitDescriptionDialog"
+          />
+        </n-form-item>
+        <n-form-item label="说明内容">
+          <n-input
+            v-model:value="descriptionDialog.content"
+            type="textarea"
+            placeholder="请输入说明内容"
+            :autosize="{ minRows: 6, maxRows: 12 }"
+          />
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button :disabled="isSaving" @click="closeDescriptionDialog">取消</n-button>
+          <n-button
+            type="primary"
+            :loading="isSaving"
+            :disabled="!canSubmitDescription"
+            @click="submitDescriptionDialog"
+          >
             保存
           </n-button>
         </div>
@@ -418,7 +578,11 @@ onMounted(() => {
                 <n-text strong>自定义说明</n-text>
                 <n-text depth="3">{{ currentDescriptionBlocks.length }} 项</n-text>
               </div>
-              <n-button size="small" :disabled="isSaving" @click="createDescriptionBlock()">
+              <n-button
+                size="small"
+                :disabled="isSaving"
+                @click="openCreateDescriptionDialog({ targetType: 'workspace', plotId: inspectedPlot.id })"
+              >
                 新建说明卡片
               </n-button>
             </div>
@@ -446,32 +610,16 @@ onMounted(() => {
                 })"
               >
                 <div class="description-card-header">
-                  <n-input
-                    :value="description.title"
-                    placeholder="说明名称"
-                    @update:value="updateDescriptionBlock(description.id, { title: $event })"
-                  />
-                  <n-button
-                    size="small"
-                    quaternary
-                    type="error"
-                    :disabled="isSaving"
-                    @click="deleteDescriptionBlock(description.id)"
-                  >
-                    删除
-                  </n-button>
+                  <h3 class="description-card-title">{{ description.title || '未命名说明' }}</h3>
                 </div>
 
-                <n-input
-                  :value="description.content"
-                  type="textarea"
-                  placeholder="说明内容"
-                  :autosize="{ minRows: 4, maxRows: 8 }"
-                  @update:value="updateDescriptionBlock(description.id, { content: $event })"
-                />
+                <p v-if="description.content.trim()" class="description-card-content">
+                  {{ description.content }}
+                </p>
+                <p v-else class="description-card-empty">暂无内容</p>
               </article>
 
-              <n-empty v-if="!hasDescriptionBlocks" description="暂无说明卡片，点击右上角新建" />
+              <n-empty v-if="!hasDescriptionBlocks" description="暂无说明卡片" />
             </div>
 
           </div>
@@ -787,10 +935,34 @@ onMounted(() => {
 
 /** 说明卡片顶部。 */
 .description-card-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
+  min-width: 0;
+}
+
+/** 说明卡片标题文本。 */
+.description-card-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #1f2c38;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/** 说明卡片正文文本。 */
+.description-card-content {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+/** 空说明内容占位。 */
+.description-card-empty {
+  margin: 0;
+  color: #8a98a8;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 /** 弹框底部操作栏。 */
