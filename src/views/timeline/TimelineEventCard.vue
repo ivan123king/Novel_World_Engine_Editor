@@ -2,6 +2,7 @@
 /**
  * 时间线事件卡片。
  * 卡片只展示事件标题和所属时间，长内容由详情弹框承载。
+ * 编辑、详情和删除入口统一由右键菜单触发，双击卡片可快速打开详情。
  * 拖拽排序使用原生 HTML5 Drag & Drop API，与左侧时间块实现保持一致，
  * 避免在 Electron 渲染进程中自定义 mousemove 监听导致的时序问题。
  */
@@ -27,6 +28,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** 选中事件卡片。 */
   select: [eventId: string];
+  /** 打开事件右键菜单。 */
+  contextMenu: [event: MouseEvent, timelineEvent: TimelineEvent];
   /** 打开详情弹框。 */
   detail: [event: TimelineEvent];
   /** 删除事件。 */
@@ -150,6 +153,8 @@ function handleDrop(dragEvent: DragEvent): void {
     }"
     :draggable="!disabled"
     @click="emit('select', event.id)"
+    @dblclick="emit('detail', event)"
+    @contextmenu="emit('contextMenu', $event, event)"
     @dragstart="handleDragStart($event, event.id)"
     @dragenter="handleDragOver"
     @dragover="handleDragOver"
@@ -161,11 +166,6 @@ function handleDrop(dragEvent: DragEvent): void {
       <span class="event-time">
         {{ event.specificTime ? `${timeName} / ${event.specificTime}` : timeName }}
       </span>
-    </div>
-
-    <div class="event-actions">
-      <n-button size="tiny" secondary @click.stop="emit('detail', event)">详情</n-button>
-      <n-button size="tiny" secondary type="error" @click.stop="emit('delete', event.id)">删除</n-button>
     </div>
   </article>
 </template>
@@ -249,14 +249,4 @@ function handleDrop(dragEvent: DragEvent): void {
   white-space: nowrap;
 }
 
-/** 事件卡片操作。 */
-.event-actions {
-  display: none;
-  gap: 6px;
-  align-items: center;
-}
-
-.event-card:hover .event-actions {
-  display: flex;
-}
 </style>

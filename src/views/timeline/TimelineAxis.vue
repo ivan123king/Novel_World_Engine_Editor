@@ -26,6 +26,8 @@ const emit = defineEmits<{
   createTimeBlock: [placement: 'before' | 'after'];
   /** 选择时间块。 */
   selectTimeBlock: [timeBlockId: string];
+  /** 打开时间块右键菜单。 */
+  contextMenuTimeBlock: [event: MouseEvent, timeBlock: TimelineTimeBlockType];
   /** 编辑时间块。 */
   editTimeBlock: [timeBlock: TimelineTimeBlockType];
   /** 删除时间块。 */
@@ -64,6 +66,7 @@ const emit = defineEmits<{
         :drop-placement="dropPlacement"
         :disabled="disabled"
         @select="emit('selectTimeBlock', $event)"
+        @context-menu="(event, timeBlock) => emit('contextMenuTimeBlock', event, timeBlock)"
         @edit="emit('editTimeBlock', $event)"
         @delete="emit('deleteTimeBlock', $event)"
         @dragstart="emit('startDrag', $event)"

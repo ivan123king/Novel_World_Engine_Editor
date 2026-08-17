@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * 时间块编辑弹框。
- * 只编辑时间名和别名列表，不包含备注或说明字段。
+ * 时间块详情和编辑弹框。
+ * 只展示或编辑时间名和别名列表，不包含备注或说明字段。
  */
 import AppModal from '@/components/common/AppModal.vue';
+import { computed } from 'vue';
 import type {
   TimelineTimeBlockDialogMode,
   TimelineTimeBlockFormValues,
@@ -25,11 +26,25 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** 关闭弹框。 */
   close: [];
+  /** 从查看模式进入编辑模式。 */
+  edit: [];
   /** 提交表单。 */
   submit: [];
   /** 更新表单值。 */
   updateValues: [values: TimelineTimeBlockFormValues];
 }>();
+
+/** 当前是否是只读查看模式。 */
+const isReadonly = computed(() => props.mode === 'view');
+
+/** 弹框标题。 */
+const dialogTitle = computed(() => {
+  if (props.mode === 'create') {
+    return '新建时间';
+  }
+
+  return props.mode === 'view' ? '时间详情' : '编辑时间';
+});
 
 /** 更新局部表单字段。 */
 function patchValues(patch: Partial<TimelineTimeBlockFormValues>): void {
@@ -60,11 +75,28 @@ function removeAlias(index: number): void {
 <template>
   <AppModal
     :open="open"
-    :title="mode === 'create' ? '新建时间' : '编辑时间'"
+    :title="dialogTitle"
     :width="560"
     @close="emit('close')"
   >
-    <n-form label-placement="top">
+    <!-- 查看模式只展示当前时间块内容，避免“详情”入口打开后误以为可直接保存。 -->
+    <div v-if="isReadonly" class="time-block-readonly">
+      <n-descriptions :column="1" bordered label-placement="left">
+        <n-descriptions-item label="时间名" label-style="width: 88px">
+          {{ values.name || '未命名时间' }}
+        </n-descriptions-item>
+        <n-descriptions-item label="别名" label-style="width: 88px">
+          <div v-if="values.aliases.length > 0" class="alias-readonly-list">
+            <n-tag v-for="alias in values.aliases" :key="alias" size="small">
+              {{ alias }}
+            </n-tag>
+          </div>
+          <span v-else>无别名</span>
+        </n-descriptions-item>
+      </n-descriptions>
+    </div>
+
+    <n-form v-else label-placement="top">
       <n-form-item label="时间名" required>
         <n-input
           :value="values.name"
@@ -100,8 +132,9 @@ function removeAlias(index: number): void {
 
     <template #footer>
       <div class="modal-footer">
-        <n-button @click="emit('close')">取消</n-button>
-        <n-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="emit('submit')">
+        <n-button @click="emit('close')">{{ isReadonly ? '关闭' : '取消' }}</n-button>
+        <n-button v-if="isReadonly" type="primary" @click="emit('edit')">编辑</n-button>
+        <n-button v-else type="primary" :loading="submitting" :disabled="!canSubmit" @click="emit('submit')">
           保存
         </n-button>
       </div>
@@ -110,6 +143,19 @@ function removeAlias(index: number): void {
 </template>
 
 <style scoped>
+/** 时间块只读详情布局。 */
+.time-block-readonly {
+  display: grid;
+  gap: 12px;
+}
+
+/** 只读别名标签列表。 */
+.alias-readonly-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /** 别名标题栏。 */
 .alias-header {
   display: flex;

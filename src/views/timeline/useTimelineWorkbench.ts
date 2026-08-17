@@ -52,8 +52,8 @@ export interface TimelineEventFormValues {
   customFields: TimelineCustomFieldRow[];
 }
 
-/** 时间块编辑弹框模式。 */
-export type TimelineTimeBlockDialogMode = 'create' | 'edit';
+/** 时间块弹框模式。 */
+export type TimelineTimeBlockDialogMode = 'create' | 'view' | 'edit';
 
 /** 事件详情弹框模式。 */
 export type TimelineEventDialogMode = 'create' | 'view' | 'edit';
@@ -540,6 +540,26 @@ export function useTimelineWorkbench() {
     isTimeBlockDialogOpen.value = true;
   }
 
+  /** 打开时间块详情弹框。 */
+  function openTimeBlockDetail(timeBlock: TimelineTimeBlock): void {
+    editingTimeBlockId.value = timeBlock.id;
+    timeBlockDialogMode.value = 'view';
+    timeBlockFormValues.value = {
+      name: timeBlock.name,
+      aliases: [...timeBlock.aliases],
+    };
+    isTimeBlockDialogOpen.value = true;
+  }
+
+  /** 从时间块详情进入编辑模式。 */
+  function editCurrentTimeBlock(): void {
+    if (!editingTimeBlockId.value) {
+      return;
+    }
+
+    timeBlockDialogMode.value = 'edit';
+  }
+
   /** 关闭时间块弹框。 */
   function closeTimeBlockDialog(): void {
     isTimeBlockDialogOpen.value = false;
@@ -988,6 +1008,8 @@ export function useTimelineWorkbench() {
     selectTimeBlock,
     openCreateTimeBlock,
     openEditTimeBlock,
+    openTimeBlockDetail,
+    editCurrentTimeBlock,
     closeTimeBlockDialog,
     submitTimeBlockForm,
     deleteTimeBlock,

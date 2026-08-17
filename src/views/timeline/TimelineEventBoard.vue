@@ -31,6 +31,8 @@ const emit = defineEmits<{
   createEvent: [];
   /** 选中事件。 */
   selectEvent: [eventId: string];
+  /** 打开事件右键菜单。 */
+  contextMenuEvent: [event: MouseEvent, timelineEvent: TimelineEvent];
   /** 打开事件详情。 */
   detailEvent: [event: TimelineEvent];
   /** 删除事件。 */
@@ -76,6 +78,7 @@ const emit = defineEmits<{
         :drop-target="dragOverEventId === event.id"
         :drop-placement="dragOverEventId === event.id ? eventDropPlacement : 'before'"
         @select="emit('selectEvent', $event)"
+        @context-menu="(event, timelineEvent) => emit('contextMenuEvent', event, timelineEvent)"
         @detail="emit('detailEvent', $event)"
         @delete="emit('deleteEvent', $event)"
         @dragstart="emit('startDrag', $event)"

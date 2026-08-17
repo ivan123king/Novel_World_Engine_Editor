@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 时间块展示组件。
- * 只展示时间名和别名摘要，并提供选中、编辑、删除和拖拽状态样式。
+ * 只展示时间名和别名摘要，并提供选中、右键菜单和拖拽状态样式。
  */
 import type { TimelineTimeBlock } from '@/types';
 
@@ -23,6 +23,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** 选择时间块。 */
   select: [timeBlockId: string];
+  /** 打开时间块右键菜单。 */
+  contextMenu: [event: MouseEvent, timeBlock: TimelineTimeBlock];
   /** 编辑时间块。 */
   edit: [timeBlock: TimelineTimeBlock];
   /** 删除时间块。 */
@@ -94,6 +96,7 @@ function handleDragOver(dragEvent: DragEvent): void {
     :draggable="!disabled"
     @click="emit('select', timeBlock.id)"
     @dblclick="emit('edit', timeBlock)"
+    @contextmenu="emit('contextMenu', $event, timeBlock)"
     @dragstart="handleDragStart($event, timeBlock.id)"
     @dragenter.prevent="handleDragOver($event)"
     @dragover.prevent="handleDragOver($event)"
@@ -106,10 +109,6 @@ function handleDragOver(dragEvent: DragEvent): void {
       <span class="time-block-aliases">
         {{ timeBlock.aliases.length > 0 ? `别名：${timeBlock.aliases.join('、')}` : '无别名' }}
       </span>
-    </span>
-    <span class="time-block-actions">
-      <n-button size="tiny" secondary @click.stop="emit('edit', timeBlock)">编辑</n-button>
-      <n-button size="tiny" secondary type="error" @click.stop="emit('delete', timeBlock.id)">删除</n-button>
     </span>
   </button>
 </template>
@@ -190,16 +189,4 @@ function handleDragOver(dragEvent: DragEvent): void {
   white-space: nowrap;
 }
 
-/** 时间块快捷操作。 */
-.time-block-actions {
-  grid-column: 2;
-  display: none;
-  gap: 6px;
-  align-items: center;
-}
-
-.time-block:hover .time-block-actions,
-.time-block.is-active .time-block-actions {
-  display: flex;
-}
 </style>

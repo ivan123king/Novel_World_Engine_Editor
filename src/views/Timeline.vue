@@ -4,13 +4,38 @@
  * 页面只负责组合时间线选择器、时间轴、事件看板和弹框；
  * 具体数据读写、拖拽排序、表单状态统一放在 useTimelineWorkbench 中。
  */
-import { onMounted } from 'vue';
+import { computed, nextTick, onMounted, reactive } from 'vue';
 import TimelineAxis from '@/views/timeline/TimelineAxis.vue';
 import TimelineEventBoard from '@/views/timeline/TimelineEventBoard.vue';
 import TimelineEventDetailDialog from '@/views/timeline/TimelineEventDetailDialog.vue';
 import TimelineSelector from '@/views/timeline/TimelineSelector.vue';
 import TimelineTimeBlockDialog from '@/views/timeline/TimelineTimeBlockDialog.vue';
 import { useTimelineWorkbench } from '@/views/timeline/useTimelineWorkbench';
+import type { TimelineEvent, TimelineTimeBlock } from '@/types';
+
+/** 时间线右键菜单目标。 */
+type TimelineContextMenuTarget =
+  | {
+      /** 当前命中时间块。 */
+      targetType: 'timeBlock';
+      /** 时间块对象。 */
+      timeBlock: TimelineTimeBlock;
+    }
+  | {
+      /** 当前命中事件卡片。 */
+      targetType: 'event';
+      /** 事件对象。 */
+      event: TimelineEvent;
+    };
+
+/** 时间线右键菜单动作。 */
+type TimelineContextMenuAction =
+  | 'editTimeBlock'
+  | 'detailTimeBlock'
+  | 'deleteTimeBlock'
+  | 'editEvent'
+  | 'detailEvent'
+  | 'deleteEvent';
 
 const {
   timelineOptions,
@@ -50,6 +75,8 @@ const {
   selectTimeBlock,
   openCreateTimeBlock,
   openEditTimeBlock,
+  openTimeBlockDetail,
+  editCurrentTimeBlock,
   closeTimeBlockDialog,
   submitTimeBlockForm,
   deleteTimeBlock,
@@ -71,6 +98,40 @@ const {
   dropEventOn,
 } = useTimelineWorkbench();
 
+/** 前端模拟右键菜单状态；后续需要时可迁移为 Electron 原生菜单。 */
+const contextMenu = reactive<{
+  show: boolean;
+  x: number;
+  y: number;
+  target: TimelineContextMenuTarget | null;
+}>({
+  show: false,
+  x: 0,
+  y: 0,
+  target: null,
+});
+
+/** 根据当前右键命中目标生成菜单项。 */
+const contextMenuOptions = computed(() => {
+  if (contextMenu.target?.targetType === 'timeBlock') {
+    return [
+      { label: '编辑', key: 'editTimeBlock' },
+      { label: '详情', key: 'detailTimeBlock' },
+      { label: '删除', key: 'deleteTimeBlock' },
+    ];
+  }
+
+  if (contextMenu.target?.targetType === 'event') {
+    return [
+      { label: '编辑', key: 'editEvent' },
+      { label: '详情', key: 'detailEvent' },
+      { label: '删除', key: 'deleteEvent' },
+    ];
+  }
+
+  return [];
+});
+
 /**
  * 更新时间块表单值。
  * 避免模板中直接给解构出来的 ref 赋值，保证输入框在 Electron 渲染进程中稳定响应。
@@ -87,6 +148,96 @@ function updateEventFormValues(values: typeof eventFormValues.value): void {
   eventFormValues.value = values;
 }
 
+/**
+ * 打开时间块右键菜单。
+ * @param event 鼠标右键事件
+ * @param timeBlock 右键命中的时间块
+ */
+function openTimeBlockContextMenu(event: MouseEvent, timeBlock: TimelineTimeBlock): void {
+  event.preventDefault();
+
+  if (isSaving.value || isLoading.value) {
+    return;
+  }
+
+  selectTimeBlock(timeBlock.id);
+  contextMenu.show = false;
+  contextMenu.target = {
+    targetType: 'timeBlock',
+    timeBlock,
+  };
+  contextMenu.x = event.clientX;
+  contextMenu.y = event.clientY;
+
+  void nextTick(() => {
+    contextMenu.show = true;
+  });
+}
+
+/**
+ * 打开事件右键菜单。
+ * @param event 鼠标右键事件
+ * @param timelineEvent 右键命中的事件
+ */
+function openEventContextMenu(event: MouseEvent, timelineEvent: TimelineEvent): void {
+  event.preventDefault();
+
+  if (isSaving.value || isLoading.value) {
+    return;
+  }
+
+  if (selectedEventId.value !== timelineEvent.id) {
+    selectEvent(timelineEvent.id);
+  }
+
+  contextMenu.show = false;
+  contextMenu.target = {
+    targetType: 'event',
+    event: timelineEvent,
+  };
+  contextMenu.x = event.clientX;
+  contextMenu.y = event.clientY;
+
+  void nextTick(() => {
+    contextMenu.show = true;
+  });
+}
+
+/**
+ * 执行时间线右键菜单动作。
+ * @param key 菜单项 key
+ */
+function handleContextMenuSelect(key: string | number): void {
+  const target = contextMenu.target;
+
+  if (!target) {
+    return;
+  }
+
+  const action = key as TimelineContextMenuAction;
+  contextMenu.show = false;
+
+  if (target.targetType === 'timeBlock') {
+    if (action === 'editTimeBlock') {
+      openEditTimeBlock(target.timeBlock);
+    } else if (action === 'detailTimeBlock') {
+      openTimeBlockDetail(target.timeBlock);
+    } else if (action === 'deleteTimeBlock') {
+      void deleteTimeBlock(target.timeBlock.id);
+    }
+    return;
+  }
+
+  if (action === 'editEvent') {
+    openEventDetail(target.event);
+    editCurrentEvent();
+  } else if (action === 'detailEvent') {
+    openEventDetail(target.event);
+  } else if (action === 'deleteEvent') {
+    void deleteEvent(target.event.id);
+  }
+}
+
 /** 页面挂载后通过时间线 API 读取当前项目中的时间线数据。 */
 onMounted(() => {
   void loadTimelines();
@@ -95,6 +246,18 @@ onMounted(() => {
 
 <template>
   <section class="timeline-page">
+    <!-- 前端模拟右键菜单：时间块和事件卡片共用同一套操作入口。 -->
+    <n-dropdown
+      trigger="manual"
+      placement="bottom-start"
+      :show="contextMenu.show"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :options="contextMenuOptions"
+      @select="handleContextMenuSelect"
+      @clickoutside="contextMenu.show = false"
+    />
+
     <!-- 顶部工具栏：时间线选择和当前数据状态。 -->
     <header class="timeline-toolbar">
       <div class="timeline-title-group">
@@ -134,6 +297,7 @@ onMounted(() => {
         :drop-placement="timeBlockDropPlacement"
         @create-time-block="openCreateTimeBlock"
         @select-time-block="selectTimeBlock"
+        @context-menu-time-block="openTimeBlockContextMenu"
         @edit-time-block="openEditTimeBlock"
         @delete-time-block="void deleteTimeBlock($event)"
         @start-drag="startTimeBlockDrag"
@@ -152,6 +316,7 @@ onMounted(() => {
         :event-drop-placement="eventDropPlacement"
         @create-event="openCreateEvent"
         @select-event="selectEvent"
+        @context-menu-event="openEventContextMenu"
         @detail-event="openEventDetail"
         @delete-event="void deleteEvent($event)"
         @start-drag="startEventDrag"
@@ -169,6 +334,7 @@ onMounted(() => {
       :submitting="isSaving"
       :can-submit="canSubmitTimeBlock"
       @close="closeTimeBlockDialog"
+      @edit="editCurrentTimeBlock"
       @update-values="updateTimeBlockFormValues"
       @submit="void submitTimeBlockForm()"
     />
