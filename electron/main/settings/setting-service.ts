@@ -1,4 +1,4 @@
-import { readdir, rm } from 'node:fs/promises';
+import { readdir, rm, stat } from 'node:fs/promises';
 import { extname } from 'node:path';
 import {
   ensureBaseDirectory,
@@ -27,6 +27,16 @@ export interface SettingListResult {
   settings: SettingFile[];
   /** 单个设定文件读取失败时的错误信息，不阻断其他文件加载。 */
   errors: string[];
+}
+
+/** 已读取设定及其文件元数据，用于恢复稳定的默认展示顺序。 */
+interface LoadedSettingFile {
+  /** 通过结构校验的设定数据。 */
+  setting: SettingFile;
+  /** 文件创建时间；无法获取创建时间时使用修改时间兜底。 */
+  createdAtMs: number;
+  /** 文件名，用于创建时间相同时提供稳定排序。 */
+  fileName: string;
 }
 
 /**
@@ -78,7 +88,7 @@ function resolveSettingFilePath(settingId: string, baseDirPath?: string): string
 export async function listSettings(baseDirPath?: string): Promise<SettingListResult> {
   const { baseDir, settingDirectory } = await resolveSettingDirectory(baseDirPath);
   const entries = await readdir(settingDirectory, { withFileTypes: true });
-  const settings: SettingFile[] = [];
+  const loadedSettings: LoadedSettingFile[] = [];
   const errors: string[] = [];
 
   for (const entry of entries) {
@@ -89,15 +99,31 @@ export async function listSettings(baseDirPath?: string): Promise<SettingListRes
     const filePath = resolvePathInBaseDirectory(baseDir, SETTING_DIRECTORY_NAME, entry.name);
 
     try {
-      settings.push(await loadJsonFileAs(filePath, isSettingFile));
+      const fileStat = await stat(filePath);
+
+      loadedSettings.push({
+        setting: await loadJsonFileAs(filePath, isSettingFile),
+        createdAtMs: fileStat.birthtimeMs || fileStat.mtimeMs,
+        fileName: entry.name,
+      });
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }
   }
 
+  loadedSettings.sort((leftSetting, rightSetting) => {
+    const createdTimeDiff = rightSetting.createdAtMs - leftSetting.createdAtMs;
+
+    if (createdTimeDiff !== 0) {
+      return createdTimeDiff;
+    }
+
+    return rightSetting.fileName.localeCompare(leftSetting.fileName);
+  });
+
   return {
     baseDir,
-    settings,
+    settings: loadedSettings.map((loadedSetting) => loadedSetting.setting),
     errors,
   };
 }

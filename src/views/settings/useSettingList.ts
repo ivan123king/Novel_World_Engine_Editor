@@ -5,12 +5,16 @@ import {
   createEmptySetting,
   type SettingFile,
 } from '@/types';
+import {
+  createSettingTextExcerpt,
+  getSettingContentHtml,
+} from '@/views/settings/settingContent';
 
 /** 设定表单字段集合。 */
 export interface SettingFormValues {
   /** 设定标题。 */
   title: string;
-  /** 设定纯文本内容。 */
+  /** 设定富文本 HTML 内容。 */
   content: string;
 }
 
@@ -18,7 +22,7 @@ export interface SettingFormValues {
 function createSettingFormValues(setting?: SettingFile): SettingFormValues {
   return {
     title: setting?.title ?? '',
-    content: setting?.content ?? '',
+    content: getSettingContentHtml(setting ?? null),
   };
 }
 
@@ -41,17 +45,6 @@ function settingMatchesKeyword(setting: SettingFile, keyword: string): boolean {
   }
 
   return setting.title.toLowerCase().includes(normalizedKeyword);
-}
-
-/** 生成用于列表摘要的短内容，避免长设定正文挤压列表布局。 */
-function createSettingExcerpt(content: string): string {
-  const normalizedContent = content.replace(/\s+/g, ' ').trim();
-
-  if (!normalizedContent) {
-    return '未填写内容';
-  }
-
-  return normalizedContent.length > 44 ? `${normalizedContent.slice(0, 44)}...` : normalizedContent;
 }
 
 /** 管理设定列表页的本地 JSON 数据状态和 UI 交互状态。 */
@@ -156,6 +149,7 @@ export function useSettingList() {
 
     nextSetting.title = values.title.trim();
     nextSetting.content = values.content;
+    nextSetting.contentFormat = 'html';
     nextSetting.schemaVersion = original?.schemaVersion ?? SETTING_SCHEMA_VERSION;
 
     return nextSetting;
@@ -248,6 +242,6 @@ export function useSettingList() {
     closeForm,
     submitForm,
     removeSetting,
-    createSettingExcerpt,
+    createSettingExcerpt: createSettingTextExcerpt,
   };
 }

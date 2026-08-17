@@ -5,6 +5,11 @@
  */
 import { computed, onMounted } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
+import SettingRichTextEditor from '@/views/settings/SettingRichTextEditor.vue';
+import {
+  getSettingContentHtml,
+  isSettingHtmlEmpty,
+} from '@/views/settings/settingContent';
 import { useSettingList } from '@/views/settings/useSettingList';
 
 const {
@@ -36,8 +41,55 @@ const {
   createSettingExcerpt,
 } = useSettingList();
 
+/** 当前设定内容的 HTML，用于 Inspector 富文本展示。 */
+const selectedContentHtml = computed(() => getSettingContentHtml(selectedSetting.value));
+
 /** 当前设定内容是否为空，用于 Inspector 展示空状态。 */
-const selectedContentIsEmpty = computed(() => !selectedSetting.value?.content.trim());
+const selectedContentIsEmpty = computed(() => isSettingHtmlEmpty(selectedContentHtml.value));
+
+/**
+ * 清理设定 HTML 展示内容。
+ * 当前内容由 Tiptap 生成，本地 JSON 仍可能被手动编辑，因此渲染前只保留基础文字标签。
+ */
+const safeSelectedContentHtml = computed(() => sanitizeSettingHtml(selectedContentHtml.value));
+
+/**
+ * 过滤设定 HTML 中的非基础文字标签和属性。
+ * @param html 原始 HTML
+ */
+function sanitizeSettingHtml(html: string): string {
+  const template = document.createElement('template');
+  const allowedTags = new Set([
+    'P',
+    'BR',
+    'STRONG',
+    'B',
+    'EM',
+    'I',
+    'S',
+    'UL',
+    'OL',
+    'LI',
+    'BLOCKQUOTE',
+    'H2',
+    'H3',
+  ]);
+
+  template.innerHTML = html;
+
+  template.content.querySelectorAll('*').forEach((element) => {
+    if (!allowedTags.has(element.tagName)) {
+      element.replaceWith(document.createTextNode(element.textContent ?? ''));
+      return;
+    }
+
+    [...element.attributes].forEach((attribute) => {
+      element.removeAttribute(attribute.name);
+    });
+  });
+
+  return template.innerHTML;
+}
 
 /** 页面挂载后读取当前小说项目的设定数据。 */
 onMounted(() => {
@@ -95,7 +147,9 @@ onMounted(() => {
             @click="openDetail(setting)"
           >
             <span class="setting-list-name">{{ setting.title }}</span>
-            <span class="setting-list-meta">{{ createSettingExcerpt(setting.content) }}</span>
+            <span class="setting-list-meta">
+              {{ createSettingExcerpt(setting.content, setting.contentFormat) }}
+            </span>
           </button>
 
           <n-empty v-if="isEmpty" description="暂无设定，点击右上角新建设定" />
@@ -131,9 +185,11 @@ onMounted(() => {
               <n-text strong>设定内容</n-text>
             </div>
 
-            <p v-if="!selectedContentIsEmpty" class="setting-content-text">
-              {{ selectedSetting.content }}
-            </p>
+            <div
+              v-if="!selectedContentIsEmpty"
+              class="setting-content-text"
+              v-html="safeSelectedContentHtml"
+            />
             <n-empty v-else description="未填写设定内容" />
           </div>
         </div>
@@ -159,12 +215,9 @@ onMounted(() => {
         </n-form-item>
 
         <n-form-item label="内容">
-          <n-input
-            v-model:value="formValues.content"
-            type="textarea"
-            placeholder="请输入设定内容，第一阶段按纯文本保存"
-            :autosize="{ minRows: 8, maxRows: 16 }"
-            clearable
+          <SettingRichTextEditor
+            v-model="formValues.content"
+            :disabled="isSaving"
           />
         </n-form-item>
 
@@ -371,7 +424,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-/** 设定正文纯文本展示。 */
+/** 设定正文富文本展示。 */
 .setting-content-text {
   min-height: 220px;
   padding: 14px 16px;
@@ -383,6 +436,36 @@ onMounted(() => {
   line-height: 1.8;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.setting-content-text :deep(p),
+.setting-content-text :deep(ul),
+.setting-content-text :deep(ol),
+.setting-content-text :deep(blockquote),
+.setting-content-text :deep(h2),
+.setting-content-text :deep(h3) {
+  margin: 0 0 10px;
+}
+
+.setting-content-text :deep(h2) {
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.setting-content-text :deep(h3) {
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.setting-content-text :deep(ul),
+.setting-content-text :deep(ol) {
+  padding-left: 24px;
+}
+
+.setting-content-text :deep(blockquote) {
+  padding-left: 12px;
+  color: #52616f;
+  border-left: 3px solid #9db7d3;
 }
 
 /** 表单错误提示。 */
