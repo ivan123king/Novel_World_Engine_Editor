@@ -37,12 +37,12 @@ const {
   loadPlots,
   openPlot,
   inspectPlot,
-  updateCurrentPlotField,
   getPlotTitle,
-  renamePlot,
+  getPlotSummary,
+  updatePlotOverview,
   createRootPlot,
   createChildPlot,
-  deletePlot,
+  createSiblingPlot,
   createDescriptionBlock,
   updateDescriptionBlock,
   startPlotDrag,
@@ -69,15 +69,32 @@ const contextMenu = reactive<{
   target: null,
 });
 
-/** 右键重命名弹框状态，不依赖右侧 Inspector 的展示表单。 */
-const renameDialog = reactive<{
+/** 剧情块编辑弹框状态，不依赖右侧 Inspector 的展示表单。 */
+const plotDialog = reactive<{
   open: boolean;
   plotId: string;
   title: string;
+  summary: string;
 }>({
   open: false,
   plotId: '',
   title: '',
+  summary: '',
+});
+
+/** 剧情块新建弹框状态，保存前不写入 JSON 文件。 */
+const createPlotDialog = reactive<{
+  open: boolean;
+  mode: 'root' | 'child' | 'sibling';
+  targetPlotId: string;
+  title: string;
+  summary: string;
+}>({
+  open: false,
+  mode: 'root',
+  targetPlotId: '',
+  title: '',
+  summary: '',
 });
 
 /** 说明卡片新建和编辑弹框状态。 */
@@ -97,8 +114,22 @@ const descriptionDialog = reactive<{
   content: '',
 });
 
-/** 重命名表单是否可以提交。 */
-const canSubmitRename = computed(() => renameDialog.title.trim().length > 0 && !isSaving.value);
+/** 剧情块编辑表单是否可以提交。 */
+const canSubmitPlotDialog = computed(() => plotDialog.title.trim().length > 0 && !isSaving.value);
+
+/** 新建剧情弹框标题。 */
+const createPlotDialogTitle = computed(() =>
+  createPlotDialog.mode === 'root'
+    ? '新建剧情'
+    : createPlotDialog.mode === 'sibling'
+      ? '新建同级剧情'
+      : '新建子剧情',
+);
+
+/** 新建剧情表单是否可以提交。 */
+const canSubmitCreatePlot = computed(
+  () => createPlotDialog.title.trim().length > 0 && !isSaving.value,
+);
 
 /** 说明卡片弹框标题。 */
 const descriptionDialogTitle = computed(() =>
@@ -116,9 +147,9 @@ const contextMenuOptions = computed(() => {
 
   if (targetType === 'rootPlot') {
     return [
-      { label: '新建同级剧情', key: 'createSiblingPlot' },
-      { label: '新建子剧情', key: 'createChildPlot' },
-      { label: '重命名', key: 'renamePlot' },
+      // { label: '新建同级剧情', key: 'createSiblingPlot' },
+      // { label: '新建子剧情', key: 'createChildPlot' },
+      { label: '编辑', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -126,9 +157,9 @@ const contextMenuOptions = computed(() => {
   if (targetType === 'childPlot') {
     return [
       { label: '进入剧情', key: 'openPlot' },
-      { label: '新建同级剧情', key: 'createSiblingPlot' },
-      { label: '新建子剧情', key: 'createChildPlot' },
-      { label: '重命名', key: 'renamePlot' },
+      // { label: '新建同级剧情', key: 'createSiblingPlot' },
+      // { label: '新建子剧情', key: 'createChildPlot' },
+      { label: '编辑', key: 'renamePlot' },
       { label: '删除', key: 'deletePlot' },
     ];
   }
@@ -181,7 +212,19 @@ function handleContextMenuSelect(key: string | number): void {
   const action = key as PlotContextMenuAction;
 
   if (action === 'renamePlot') {
-    openRenameDialog(contextMenu.target);
+    openPlotDialog(contextMenu.target);
+    contextMenu.show = false;
+    return;
+  }
+
+  if (action === 'createSiblingPlot') {
+    openCreatePlotDialog('sibling', contextMenu.target);
+    contextMenu.show = false;
+    return;
+  }
+
+  if (action === 'createChildPlot') {
+    openCreatePlotDialog('child', contextMenu.target);
     contextMenu.show = false;
     return;
   }
@@ -203,40 +246,108 @@ function handleContextMenuSelect(key: string | number): void {
 }
 
 /**
- * 打开剧情块重命名弹框。
- * @param target 右键命中的剧情块目标
+ * 打开剧情块新建弹框。
+ * @param mode 新建根剧情、子剧情或同级剧情
+ * @param target 右键命中的剧情库目标
  */
-function openRenameDialog(target: PlotContextTarget): void {
-  if (!target.plotId) {
+function openCreatePlotDialog(
+  mode: 'root' | 'child' | 'sibling',
+  target?: PlotContextTarget | null,
+): void {
+  const targetPlotId = mode === 'root'
+    ? ''
+    : target?.plotId ?? currentPlot.value?.id ?? '';
+
+  if (mode !== 'root' && !targetPlotId) {
+    errorMessage.value = '请先选择一个剧情块，再新建剧情。';
     return;
   }
 
-  renameDialog.plotId = target.plotId;
-  renameDialog.title = getPlotTitle(target.plotId) || '未命名剧情';
-  renameDialog.open = true;
+  createPlotDialog.open = true;
+  createPlotDialog.mode = mode;
+  createPlotDialog.targetPlotId = targetPlotId;
+  createPlotDialog.title = '';
+  createPlotDialog.summary = '';
 }
 
-/** 关闭剧情块重命名弹框。 */
-function closeRenameDialog(): void {
+/** 关闭剧情块新建弹框。 */
+function closeCreatePlotDialog(): void {
   if (isSaving.value) {
     return;
   }
 
-  renameDialog.open = false;
-  renameDialog.plotId = '';
-  renameDialog.title = '';
+  createPlotDialog.open = false;
+  createPlotDialog.mode = 'root';
+  createPlotDialog.targetPlotId = '';
+  createPlotDialog.title = '';
+  createPlotDialog.summary = '';
 }
 
-/** 提交剧情块重命名。 */
-async function submitRename(): Promise<void> {
-  if (!renameDialog.plotId || !canSubmitRename.value) {
+/** 提交剧情块新建表单，保存后才真正创建剧情节点。 */
+async function submitCreatePlotDialog(): Promise<void> {
+  if (!canSubmitCreatePlot.value) {
     return;
   }
 
-  const isRenamed = await renamePlot(renameDialog.plotId, renameDialog.title);
+  const payload = {
+    title: createPlotDialog.title.trim(),
+    summary: createPlotDialog.summary,
+  };
+  let isCreated = false;
 
-  if (isRenamed) {
-    closeRenameDialog();
+  if (createPlotDialog.mode === 'root') {
+    isCreated = await createRootPlot(payload);
+  } else if (createPlotDialog.mode === 'child') {
+    isCreated = await createChildPlot(createPlotDialog.targetPlotId, payload);
+  } else {
+    isCreated = await createSiblingPlot(createPlotDialog.targetPlotId, payload);
+  }
+
+  if (isCreated) {
+    closeCreatePlotDialog();
+  }
+}
+
+/**
+ * 打开剧情块编辑弹框。
+ * @param target 右键命中的剧情块目标
+ */
+function openPlotDialog(target: PlotContextTarget): void {
+  if (!target.plotId) {
+    return;
+  }
+
+  plotDialog.plotId = target.plotId;
+  plotDialog.title = getPlotTitle(target.plotId) || '未命名剧情';
+  plotDialog.summary = getPlotSummary(target.plotId);
+  plotDialog.open = true;
+}
+
+/** 关闭剧情块编辑弹框。 */
+function closePlotDialog(): void {
+  if (isSaving.value) {
+    return;
+  }
+
+  plotDialog.open = false;
+  plotDialog.plotId = '';
+  plotDialog.title = '';
+  plotDialog.summary = '';
+}
+
+/** 提交剧情块标题和简介编辑。 */
+async function submitPlotDialog(): Promise<void> {
+  if (!plotDialog.plotId || !canSubmitPlotDialog.value) {
+    return;
+  }
+
+  const isSaved = await updatePlotOverview(plotDialog.plotId, {
+    title: plotDialog.title,
+    summary: plotDialog.summary,
+  });
+
+  if (isSaved) {
+    closePlotDialog();
   }
 }
 
@@ -356,23 +467,77 @@ onMounted(() => {
       @clickoutside="contextMenu.show = false"
     />
 
-    <!-- 右键重命名弹框：独立于右侧内容区，便于后续改造 Inspector 展示。 -->
-    <AppModal :open="renameDialog.open" title="重命名剧情块" :width="420" @close="closeRenameDialog">
+    <!-- 剧情块新建弹框：填写名称和内容后才创建 JSON 节点。 -->
+    <AppModal
+      :open="createPlotDialog.open"
+      :title="createPlotDialogTitle"
+      :width="560"
+      @close="closeCreatePlotDialog"
+    >
       <n-form label-placement="top" label-align="text">
         <n-form-item label="剧情名称" required>
           <n-input
-            v-model:value="renameDialog.title"
-            placeholder="请输入新的剧情名称"
+            v-model:value="createPlotDialog.title"
+            placeholder="请输入剧情名称"
             clearable
-            @keyup.enter="submitRename"
+            @keyup.enter="submitCreatePlotDialog"
+          />
+        </n-form-item>
+        <n-form-item label="剧情内容">
+          <n-input
+            v-model:value="createPlotDialog.summary"
+            type="textarea"
+            placeholder="请输入剧情内容"
+            :autosize="{ minRows: 4, maxRows: 8 }"
           />
         </n-form-item>
       </n-form>
 
       <template #footer>
         <div class="modal-footer">
-          <n-button :disabled="isSaving" @click="closeRenameDialog">取消</n-button>
-          <n-button type="primary" :loading="isSaving" :disabled="!canSubmitRename" @click="submitRename">
+          <n-button :disabled="isSaving" @click="closeCreatePlotDialog">取消</n-button>
+          <n-button
+            type="primary"
+            :loading="isSaving"
+            :disabled="!canSubmitCreatePlot"
+            @click="submitCreatePlotDialog"
+          >
+            保存
+          </n-button>
+        </div>
+      </template>
+    </AppModal>
+
+    <!-- 剧情块编辑弹框：标题和简介通过右键菜单进入编辑，右侧 Inspector 只展示内容。 -->
+    <AppModal :open="plotDialog.open" title="编辑剧情块" :width="560" @close="closePlotDialog">
+      <n-form label-placement="top" label-align="text">
+        <n-form-item label="剧情名称" required>
+          <n-input
+            v-model:value="plotDialog.title"
+            placeholder="请输入剧情名称"
+            clearable
+            @keyup.enter="submitPlotDialog"
+          />
+        </n-form-item>
+        <n-form-item label="剧情简介">
+          <n-input
+            v-model:value="plotDialog.summary"
+            type="textarea"
+            placeholder="请输入剧情简介"
+            :autosize="{ minRows: 4, maxRows: 8 }"
+          />
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button :disabled="isSaving" @click="closePlotDialog">取消</n-button>
+          <n-button
+            type="primary"
+            :loading="isSaving"
+            :disabled="!canSubmitPlotDialog"
+            @click="submitPlotDialog"
+          >
             保存
           </n-button>
         </div>
@@ -435,9 +600,9 @@ onMounted(() => {
           size="small"
           type="primary"
           :disabled="isSaving || isLoading"
-          @click="createRootPlot"
+          @click="openCreatePlotDialog('root')"
         >
-          新建剧情块
+          新建剧情
         </n-button>
       </n-space>
     </header>
@@ -548,8 +713,12 @@ onMounted(() => {
             <n-empty v-if="!currentPlot" description="请先创建或选择剧情块" />
           </div>
 
-          <n-button block :disabled="!currentPlot || isSaving || isLoading" @click="createChildPlot()">
-            新建子剧情
+          <n-button
+            block
+            :disabled="!currentPlot || isSaving || isLoading"
+            @click="openCreatePlotDialog('child', { targetType: 'workspace', plotId: currentPlot?.id })"
+          >
+            新建剧情
           </n-button>
         </aside>
 
@@ -558,19 +727,13 @@ onMounted(() => {
             <!-- 右侧 Inspector 展示的剧情简介区域。 -->
             <div class="summary-block">
               <div class="summary-header">
-                <n-text strong style="font-size: large;">{{ inspectedPlot.title }}</n-text>
-                <n-button type="error" :disabled="isSaving" @click="deletePlot(inspectedPlot.id)">
-                  删除剧情块
-                </n-button>
+                <h3 class="summary-title">{{ inspectedPlot.title || '未命名剧情' }}</h3>
               </div>
 
-              <n-input
-                :value="inspectedPlot.summary"
-                type="textarea"
-                placeholder="剧情简介"
-                :autosize="{ minRows: 3, maxRows: 6 }"
-                @update:value="updateCurrentPlotField('summary', $event)"
-              />
+              <p v-if="inspectedPlot.summary.trim()" class="summary-content">
+                {{ inspectedPlot.summary }}
+              </p>
+              <p v-else class="summary-empty">暂无简介</p>
             </div>
 
             <div class="description-toolbar">
@@ -893,10 +1056,34 @@ onMounted(() => {
 
 /** 简介顶部操作行。 */
 .summary-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
+  min-width: 0;
+}
+
+/** 当前剧情块标题。 */
+.summary-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #1f2c38;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+/** 当前剧情块简介文本。 */
+.summary-content {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/** 当前剧情块空简介占位。 */
+.summary-empty {
+  margin: 0;
+  color: #8a98a8;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 /** 说明卡片工具栏。 */

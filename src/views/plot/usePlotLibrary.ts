@@ -48,6 +48,14 @@ interface PlotDescriptionDraft {
   content: string;
 }
 
+/** 剧情块新建弹框提交的数据。 */
+interface PlotCreateDraft {
+  /** 剧情块名称。 */
+  title: string;
+  /** 剧情块简介。 */
+  summary: string;
+}
+
 /** 剧情块拖放插入位置。 */
 export type PlotDropPlacement = 'before' | 'after';
 
@@ -267,17 +275,6 @@ export function usePlotLibrary() {
     childrenByParentId.value = nextChildrenByParentId;
   }
 
-  /** 将新索引条目追加进已缓存的同级列表。 */
-  function appendEntryToCachedChildren(entry: PlotIndexEntry): void {
-    const siblings = childrenByParentId.value.get(entry.parentId);
-
-    if (!siblings) {
-      return;
-    }
-
-    cacheChildren(entry.parentId, [...siblings, entry]);
-  }
-
   /** 更新某个索引条目的直接子剧情数量。 */
   function updateEntryChildCount(plotId: string, childCount: number): void {
     const entry = entryById.value.get(plotId);
@@ -318,6 +315,88 @@ export function usePlotLibrary() {
     }
 
     return breadcrumb;
+  }
+
+  /**
+   * 确保某个父剧情下的直接子剧情索引已加载。
+   * 新建置顶需要提交完整同级 ID 顺序，因此不能只知道 childCount。
+   */
+  async function ensureCachedChildren(parentId: string | null): Promise<PlotIndexEntry[] | null> {
+    const cachedChildren = childrenByParentId.value.get(parentId);
+
+    if (cachedChildren) {
+      return [...cachedChildren].sort(sortPlotEntries);
+    }
+
+    if (parentId === null) {
+      return rootPlots.value;
+    }
+
+    try {
+      const result = await loadPlotLayerFile(parentId);
+      const entry = cachePlot(result.plot);
+
+      cacheEntries(result.breadcrumb.length > 0 ? result.breadcrumb : [entry]);
+      cacheChildren(result.plot.id, result.children);
+      fileErrors.value = result.errors;
+      dataDirectory.value = result.baseDir;
+
+      return [...result.children].sort(sortPlotEntries);
+    } catch (error) {
+      errorMessage.value = formatError(error);
+      return null;
+    }
+  }
+
+  /**
+   * 将新建剧情块插入同级列表最前面，并保存同级连续 order。
+   * 这里复用排序接口，让索引和已存在的剧情详情文件保持一致。
+   */
+  async function insertCreatedEntryAtTop(
+    entry: PlotIndexEntry,
+    previousSiblings: PlotIndexEntry[],
+  ): Promise<PlotIndexEntry> {
+    const orderedSiblings = [
+      entry,
+      ...previousSiblings
+        .filter((sibling) => sibling.id !== entry.id)
+        .sort(sortPlotEntries),
+    ].map((sibling, order) => ({
+      ...sibling,
+      order,
+    }));
+
+    cacheChildren(entry.parentId, orderedSiblings);
+    isSaving.value = true;
+    saveMessage.value = '';
+
+    try {
+      await Promise.all(plotSaveQueues.values());
+      const savedSiblings = await savePlotOrder(
+        entry.parentId,
+        orderedSiblings.map((sibling) => sibling.id),
+      );
+
+      cacheChildren(entry.parentId, savedSiblings);
+      savedSiblings.forEach((savedEntry) => {
+        const plot = plotById.value.get(savedEntry.id);
+
+        if (plot && plot.order !== savedEntry.order) {
+          cachePlot({
+            ...plot,
+            order: savedEntry.order,
+          });
+        }
+      });
+
+      errorMessage.value = '';
+      return savedSiblings.find((savedEntry) => savedEntry.id === entry.id) ?? entry;
+    } catch (error) {
+      errorMessage.value = formatError(error);
+      return entry;
+    } finally {
+      isSaving.value = plotSaveQueues.size > 0;
+    }
   }
 
   /** 从缓存中移除一批剧情块。 */
@@ -521,18 +600,29 @@ export function usePlotLibrary() {
 
   /**
    * 从已缓存的完整剧情或轻量索引中读取剧情名称。
-   * 供右键重命名弹框初始化输入值，不依赖右侧 Inspector 当前展示状态。
+   * 供右键编辑弹框初始化输入值，不依赖右侧 Inspector 当前展示状态。
    */
   function getPlotTitle(plotId: string): string {
     return plotById.value.get(plotId)?.title ?? entryById.value.get(plotId)?.title ?? '';
   }
 
   /**
-   * 重命名指定剧情块并保存到本地 JSON 文件。
+   * 从已缓存的完整剧情或轻量索引中读取剧情简介。
+   * 供右键编辑弹框初始化输入值，避免为了打开弹框提前加载完整详情。
+   */
+  function getPlotSummary(plotId: string): string {
+    return plotById.value.get(plotId)?.summary ?? entryById.value.get(plotId)?.summary ?? '';
+  }
+
+  /**
+   * 编辑指定剧情块的标题和简介，并保存到本地 JSON 文件。
    * 若目标剧情尚未加载完整详情，则先读取该剧情层级，但不切换当前页面层级。
    */
-  async function renamePlot(plotId: string, title: string): Promise<boolean> {
-    const nextTitle = title.trim();
+  async function updatePlotOverview(
+    plotId: string,
+    payload: { title: string; summary: string },
+  ): Promise<boolean> {
+    const nextTitle = payload.title.trim();
 
     if (!nextTitle) {
       errorMessage.value = '剧情名称不能为空。';
@@ -560,6 +650,7 @@ export function usePlotLibrary() {
     const nextPlot: PlotFile = {
       ...targetPlot,
       title: nextTitle,
+      summary: payload.summary,
     };
 
     cachePlot(nextPlot);
@@ -578,91 +669,118 @@ export function usePlotLibrary() {
       breadcrumbPlots.value = resolveCachedBreadcrumb(currentPlotId.value);
     }
 
-    saveMessage.value = '已重命名剧情块。';
+    saveMessage.value = '已保存剧情块。';
     return true;
   }
 
   /** 创建根剧情块并保存到 `plots/*.json`。 */
-  async function createRootPlot(): Promise<void> {
-    const nextPlot = createEmptyPlot(createPlotId(), '未命名剧情块', null, rootPlots.value.length);
+  async function createRootPlot(draft: Partial<PlotCreateDraft> = {}): Promise<boolean> {
+    const previousRoots = await ensureCachedChildren(null);
+
+    if (!previousRoots) {
+      return false;
+    }
+
+    const nextPlot: PlotFile = {
+      ...createEmptyPlot(createPlotId(), draft.title?.trim() || '未命名剧情块', null, 0),
+      summary: draft.summary ?? '',
+    };
     const savedPlot = await persistPlot(nextPlot);
 
     if (!savedPlot) {
-      return;
+      return false;
     }
 
     const entry = cachePlot(savedPlot);
+    const orderedEntry = await insertCreatedEntryAtTop(entry, previousRoots);
 
-    appendEntryToCachedChildren(entry);
     cacheChildren(savedPlot.id, []);
     totalPlotCount.value += 1;
     currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
-    breadcrumbPlots.value = [entry];
+    breadcrumbPlots.value = [orderedEntry];
+    return true;
   }
 
   /** 给指定剧情块创建直接子剧情并保存到 `plots/*.json`。 */
-  async function createChildPlot(parentId = currentPlot.value?.id ?? null): Promise<void> {
+  async function createChildPlot(
+    parentId = currentPlot.value?.id ?? null,
+    draft: Partial<PlotCreateDraft> = {},
+  ): Promise<boolean> {
     if (!parentId) {
-      await createRootPlot();
-      return;
+      return createRootPlot(draft);
     }
 
-    const parentEntry = entryById.value.get(parentId);
-    const loadedChildren = childrenByParentId.value.get(parentId);
-    const childCount = loadedChildren?.length ?? parentEntry?.childCount ?? 0;
-    const nextPlot = createEmptyPlot(createPlotId(), '未命名子剧情', parentId, childCount);
+    const previousChildren = await ensureCachedChildren(parentId);
+
+    if (!previousChildren) {
+      return false;
+    }
+
+    const childCount = previousChildren.length;
+    const nextPlot: PlotFile = {
+      ...createEmptyPlot(createPlotId(), draft.title?.trim() || '未命名子剧情', parentId, 0),
+      summary: draft.summary ?? '',
+    };
     const savedPlot = await persistPlot(nextPlot);
 
     if (!savedPlot) {
-      return;
+      return false;
     }
 
     const entry = cachePlot(savedPlot);
+    await insertCreatedEntryAtTop(entry, previousChildren);
 
-    appendEntryToCachedChildren(entry);
     cacheChildren(savedPlot.id, []);
     totalPlotCount.value += 1;
     updateEntryChildCount(parentId, childCount + 1);
-    currentPlotId.value = savedPlot.id;
+    // currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
-    breadcrumbPlots.value = resolveCachedBreadcrumb(savedPlot.id);
+    // breadcrumbPlots.value = resolveCachedBreadcrumb(savedPlot.id);
+    return true;
   }
 
   /** 给指定剧情块创建同级剧情并保存到 `plots/*.json`。 */
-  async function createSiblingPlot(plotId: string): Promise<void> {
+  async function createSiblingPlot(
+    plotId: string,
+    draft: Partial<PlotCreateDraft> = {},
+  ): Promise<boolean> {
     const targetEntry = entryById.value.get(plotId);
 
     if (!targetEntry) {
-      return;
+      return false;
     }
 
-    const siblings = childrenByParentId.value.get(targetEntry.parentId) ?? [];
-    const siblingCount = siblings.length > 0
-      ? siblings.length
-      : Array.from(entryById.value.values()).filter(
-          (entry) => entry.parentId === targetEntry.parentId,
-        ).length;
-    const nextPlot = createEmptyPlot(
-      createPlotId(),
-      '未命名同级剧情',
-      targetEntry.parentId,
-      siblingCount,
-    );
+    const siblings = await ensureCachedChildren(targetEntry.parentId);
+
+    if (!siblings) {
+      return false;
+    }
+
+    const nextPlot: PlotFile = {
+      ...createEmptyPlot(
+        createPlotId(),
+        draft.title?.trim() || '未命名同级剧情',
+        targetEntry.parentId,
+        0,
+      ),
+      summary: draft.summary ?? '',
+    };
     const savedPlot = await persistPlot(nextPlot);
 
     if (!savedPlot) {
-      return;
+      return false;
     }
 
     const entry = cachePlot(savedPlot);
+    await insertCreatedEntryAtTop(entry, siblings);
 
-    appendEntryToCachedChildren(entry);
     cacheChildren(savedPlot.id, []);
     totalPlotCount.value += 1;
     currentPlotId.value = savedPlot.id;
     inspectedPlotId.value = savedPlot.id;
     breadcrumbPlots.value = resolveCachedBreadcrumb(savedPlot.id);
+    return true;
   }
 
   /** 删除指定剧情块及其全部后代，并让 main process 根据索引计算子树。 */
@@ -1104,7 +1222,8 @@ export function usePlotLibrary() {
     inspectPlot,
     updateCurrentPlotField,
     getPlotTitle,
-    renamePlot,
+    getPlotSummary,
+    updatePlotOverview,
     createRootPlot,
     createChildPlot,
     createSiblingPlot,
