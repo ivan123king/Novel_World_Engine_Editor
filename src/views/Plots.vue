@@ -5,12 +5,15 @@
  */
 import { computed, nextTick, onMounted, reactive } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
+import RichTextEditor from '@/components/common/RichTextEditor.vue';
 import type {
   PlotContextMenuAction,
   PlotContextTarget,
   PlotDropPlacement,
 } from '@/views/plot/usePlotLibrary';
 import { usePlotLibrary } from '@/views/plot/usePlotLibrary';
+
+const EMPTY_PLOT_RICH_TEXT_HTML = '<p></p>';
 
 const {
   rootPlots,
@@ -140,6 +143,116 @@ const descriptionDialogTitle = computed(() =>
 const canSubmitDescription = computed(
   () => descriptionDialog.title.trim().length > 0 && !isSaving.value,
 );
+
+/**
+ * 转义剧情旧纯文本中的 HTML 特殊字符。
+ * @param text 需要转义的原始纯文本
+ */
+function escapePlotHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * 判断剧情内容是否已经是富文本 HTML。
+ * @param content 剧情简介或说明正文
+ */
+function isPlotHtmlContent(content: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(content);
+}
+
+/**
+ * 将旧纯文本剧情内容转换为 Tiptap 可编辑的段落 HTML。
+ * @param content 剧情简介或说明正文
+ */
+function convertPlotTextToHtml(content: string): string {
+  const lines = content.split(/\r?\n/);
+
+  if (lines.length === 0 || lines.every((line) => line.trim().length === 0)) {
+    return EMPTY_PLOT_RICH_TEXT_HTML;
+  }
+
+  return lines
+    .map((line) => {
+      const escapedLine = escapePlotHtml(line);
+      return escapedLine.trim().length > 0 ? `<p>${escapedLine}</p>` : '<p></p>';
+    })
+    .join('');
+}
+
+/**
+ * 获取剧情内容的富文本 HTML，兼容旧项目中的纯文本字符串。
+ * @param content 剧情简介或说明正文
+ */
+function getPlotEditorHtml(content: string): string {
+  if (!content.trim()) {
+    return EMPTY_PLOT_RICH_TEXT_HTML;
+  }
+
+  return isPlotHtmlContent(content) ? content : convertPlotTextToHtml(content);
+}
+
+/**
+ * 将剧情富文本内容提取为纯文本，用于列表摘要和空内容判断。
+ * @param content 剧情简介或说明正文
+ */
+function createPlotPlainText(content: string): string {
+  const template = document.createElement('template');
+
+  template.innerHTML = getPlotEditorHtml(content);
+  return (template.content.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * 判断剧情富文本内容是否为空。
+ * @param content 剧情简介或说明正文
+ */
+function isPlotRichTextEmpty(content: string): boolean {
+  return createPlotPlainText(content).length === 0;
+}
+
+/**
+ * 创建剧情列表中的纯文本摘要。
+ * @param content 剧情简介或说明正文
+ * @param fallback 空内容时展示的文案
+ */
+function createPlotTextExcerpt(content: string, fallback: string): string {
+  const plainText = createPlotPlainText(content);
+
+  if (!plainText) {
+    return fallback;
+  }
+
+  return plainText.length > 52 ? `${plainText.slice(0, 52)}...` : plainText;
+}
+
+/**
+ * 安全渲染剧情精简富文本，只允许正文和二、三级标题。
+ * @param content 剧情简介或说明正文
+ */
+function sanitizePlotRichTextHtml(content: string): string {
+  const template = document.createElement('template');
+  const allowedTags = new Set(['P', 'BR', 'H2', 'H3']);
+
+  template.innerHTML = getPlotEditorHtml(content);
+
+  template.content.querySelectorAll('*').forEach((element) => {
+    if (!allowedTags.has(element.tagName)) {
+      element.replaceWith(document.createTextNode(element.textContent ?? ''));
+      return;
+    }
+
+    [...element.attributes].forEach((attribute) => {
+      element.removeAttribute(attribute.name);
+    });
+  });
+
+  return template.innerHTML;
+}
 
 /** 根据右键命中区域生成对应菜单项。 */
 const contextMenuOptions = computed(() => {
@@ -319,7 +432,7 @@ function openPlotDialog(target: PlotContextTarget): void {
 
   plotDialog.plotId = target.plotId;
   plotDialog.title = getPlotTitle(target.plotId) || '未命名剧情';
-  plotDialog.summary = getPlotSummary(target.plotId);
+  plotDialog.summary = getPlotEditorHtml(getPlotSummary(target.plotId));
   plotDialog.open = true;
 }
 
@@ -396,7 +509,7 @@ function openEditDescriptionDialog(target: PlotContextTarget): void {
   descriptionDialog.plotId = plotId;
   descriptionDialog.descriptionId = description.id;
   descriptionDialog.title = description.title;
-  descriptionDialog.content = description.content;
+  descriptionDialog.content = getPlotEditorHtml(description.content);
 }
 
 /** 关闭说明卡片弹框。 */
@@ -471,7 +584,7 @@ onMounted(() => {
     <AppModal
       :open="createPlotDialog.open"
       :title="createPlotDialogTitle"
-      :width="560"
+      :width="680"
       @close="closeCreatePlotDialog"
     >
       <n-form label-placement="top" label-align="text">
@@ -484,11 +597,9 @@ onMounted(() => {
           />
         </n-form-item>
         <n-form-item label="剧情内容">
-          <n-input
-            v-model:value="createPlotDialog.summary"
-            type="textarea"
-            placeholder="请输入剧情内容"
-            :autosize="{ minRows: 4, maxRows: 8 }"
+          <RichTextEditor
+            v-model="createPlotDialog.summary"
+            :disabled="isSaving"
           />
         </n-form-item>
       </n-form>
@@ -509,7 +620,7 @@ onMounted(() => {
     </AppModal>
 
     <!-- 剧情块编辑弹框：标题和简介通过右键菜单进入编辑，右侧 Inspector 只展示内容。 -->
-    <AppModal :open="plotDialog.open" title="编辑剧情块" :width="560" @close="closePlotDialog">
+    <AppModal :open="plotDialog.open" title="编辑剧情块" :width="680" @close="closePlotDialog">
       <n-form label-placement="top" label-align="text">
         <n-form-item label="剧情名称" required>
           <n-input
@@ -520,11 +631,9 @@ onMounted(() => {
           />
         </n-form-item>
         <n-form-item label="剧情简介">
-          <n-input
-            v-model:value="plotDialog.summary"
-            type="textarea"
-            placeholder="请输入剧情简介"
-            :autosize="{ minRows: 4, maxRows: 8 }"
+          <RichTextEditor
+            v-model="plotDialog.summary"
+            :disabled="isSaving"
           />
         </n-form-item>
       </n-form>
@@ -548,7 +657,7 @@ onMounted(() => {
     <AppModal
       :open="descriptionDialog.open"
       :title="descriptionDialogTitle"
-      :width="560"
+      :width="680"
       @close="closeDescriptionDialog"
     >
       <n-form label-placement="top" label-align="text">
@@ -561,11 +670,9 @@ onMounted(() => {
           />
         </n-form-item>
         <n-form-item label="说明内容">
-          <n-input
-            v-model:value="descriptionDialog.content"
-            type="textarea"
-            placeholder="请输入说明内容"
-            :autosize="{ minRows: 6, maxRows: 12 }"
+          <RichTextEditor
+            v-model="descriptionDialog.content"
+            :disabled="isSaving"
           />
         </n-form-item>
       </n-form>
@@ -662,7 +769,9 @@ onMounted(() => {
             @contextmenu="openContextMenu($event, { targetType: 'rootPlot', plotId: plot.id })"
           >
             <span class="root-block-title">{{ plot.title || '未命名剧情' }}</span>
-            <span class="root-block-summary">{{ plot.summary || '暂无简介' }}</span>
+            <span class="root-block-summary">
+              {{ createPlotTextExcerpt(plot.summary, '暂无简介') }}
+            </span>
           </button>
 
           <n-empty v-if="!isLoading && !hasRootPlots" description="暂无一级剧情块" />
@@ -706,7 +815,9 @@ onMounted(() => {
               @contextmenu="openContextMenu($event, { targetType: 'childPlot', plotId: plot.id })"
             >
               <span class="child-node-title">{{ plot.title || '未命名剧情' }}</span>
-              <span class="child-node-summary">{{ plot.summary || '暂无简介' }}</span>
+              <span class="child-node-summary">
+                {{ createPlotTextExcerpt(plot.summary, '暂无简介') }}
+              </span>
             </button>
 
             <n-empty v-if="currentPlot && !hasChildPlots" description="暂无直接子剧情" />
@@ -730,9 +841,11 @@ onMounted(() => {
                 <h3 class="summary-title">{{ inspectedPlot.title || '未命名剧情' }}</h3>
               </div>
 
-              <p v-if="inspectedPlot.summary.trim()" class="summary-content">
-                {{ inspectedPlot.summary }}
-              </p>
+              <div
+                v-if="!isPlotRichTextEmpty(inspectedPlot.summary)"
+                class="summary-content"
+                v-html="sanitizePlotRichTextHtml(inspectedPlot.summary)"
+              />
               <p v-else class="summary-empty">暂无简介</p>
             </div>
 
@@ -776,9 +889,11 @@ onMounted(() => {
                   <h3 class="description-card-title">{{ description.title || '未命名说明' }}</h3>
                 </div>
 
-                <p v-if="description.content.trim()" class="description-card-content">
-                  {{ description.content }}
-                </p>
+                <div
+                  v-if="!isPlotRichTextEmpty(description.content)"
+                  class="description-card-content"
+                  v-html="sanitizePlotRichTextHtml(description.content)"
+                />
                 <p v-else class="description-card-empty">暂无内容</p>
               </article>
 
@@ -1070,12 +1185,34 @@ onMounted(() => {
 
 /** 当前剧情块简介文本。 */
 .summary-content {
-  margin: 0;
   overflow-wrap: anywhere;
   color: #334155;
   font-size: 13px;
   line-height: 1.7;
-  white-space: pre-wrap;
+}
+
+.summary-content :deep(p),
+.summary-content :deep(h2),
+.summary-content :deep(h3) {
+  margin: 0 0 10px;
+}
+
+.summary-content :deep(p:last-child),
+.summary-content :deep(h2:last-child),
+.summary-content :deep(h3:last-child) {
+  margin-bottom: 0;
+}
+
+.summary-content :deep(h2) {
+  color: #1f2c38;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.summary-content :deep(h3) {
+  color: #1f2c38;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 /** 当前剧情块空简介占位。 */
@@ -1136,12 +1273,34 @@ onMounted(() => {
 
 /** 说明卡片正文文本。 */
 .description-card-content {
-  margin: 0;
   overflow-wrap: anywhere;
   color: #334155;
   font-size: 13px;
   line-height: 1.65;
-  white-space: pre-wrap;
+}
+
+.description-card-content :deep(p),
+.description-card-content :deep(h2),
+.description-card-content :deep(h3) {
+  margin: 0 0 8px;
+}
+
+.description-card-content :deep(p:last-child),
+.description-card-content :deep(h2:last-child),
+.description-card-content :deep(h3:last-child) {
+  margin-bottom: 0;
+}
+
+.description-card-content :deep(h2) {
+  color: #1f2c38;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.description-card-content :deep(h3) {
+  color: #1f2c38;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 /** 空说明内容占位。 */

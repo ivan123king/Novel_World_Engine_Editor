@@ -5,7 +5,7 @@
  */
 import { computed, onMounted } from 'vue';
 import AppModal from '@/components/common/AppModal.vue';
-import SettingRichTextEditor from '@/views/settings/SettingRichTextEditor.vue';
+import RichTextEditor from '@/components/common/RichTextEditor.vue';
 import {
   getSettingContentHtml,
   isSettingHtmlEmpty,
@@ -217,8 +217,9 @@ onMounted(() => {
         </n-form-item>
 
         <n-form-item label="内容">
-          <SettingRichTextEditor
+          <RichTextEditor
             v-model="formValues.content"
+            mode="setting"
             :disabled="isSaving"
           />
         </n-form-item>
